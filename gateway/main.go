@@ -5,11 +5,26 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
+	// "time"
+
+	"gateway/models"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
+
+type HistoryMessage struct {
+	Role string `json:"role"`
+	Text string `json:"text"`
+}
+
+type BrainRequest struct {
+	UserID  string           `json:"user_id"`
+	Query   string           `json:"query"`
+	History []HistoryMessage `json:"history"`
+}
 
 type Module struct {
 	ID          string `json:"id"`
@@ -31,6 +46,7 @@ type IntentResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
+
 var (
 	activeModules = []Module{
 		{ID: "social", Name: "Social Media", Description: "Manage your social presence.", Icon: "social"},
@@ -39,11 +55,21 @@ var (
 	brainServiceURL = "http://localhost:8000/brain/v1/process_intent"
 )
 
-func main() {
-	app := fiber.New(fiber.Config{
-		AppName: "Serqet OS Gateway (Go 1.26)",
-	})
+var DB *gorm.DB
 
+func initDB() {
+	dsn := "host=localhost user=serqet password=password dbname=serqet port=5432 sslmode=disable"
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	DB.AutoMigrate(&models.ChatHistory{}, &models.FinanceRecord{}, &models.TaskRecord{})
+}
+
+func main() {
+	initDB()
+	app := fiber.New()
 	app.Use(cors.New())
 
 	app.Get("/api/v1/modules", func(c fiber.Ctx) error {
@@ -51,27 +77,53 @@ func main() {
 	})
 
 	app.Post("/api/v1/intent", func(c fiber.Ctx) error {
-		var req IntentRequest
+		var body struct {
+			UserID string `json:"user_id"`
+			Query  string `json:"query"`
+		}
+		c.Bind().JSON(&body)
+
+		var dbHistory []models.ChatHistory
+		DB.Where("user_id = ?", body.UserID).Order("created_at desc").Limit(6).Find(&dbHistory)
 		
-		if err := c.Bind().JSON(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON"})
+		var brainHistory []HistoryMessage
+		for i := len(dbHistory) - 1; i >= 0; i-- {
+			brainHistory = append(brainHistory, HistoryMessage{
+				Role: dbHistory[i].Role,
+				Text: dbHistory[i].Text,
+			})
 		}
 
-		log.Printf("Forwarding to Brain: %s", req.Query)
-
-		brainReqBody, _ := json.Marshal(req)
-		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Post(brainServiceURL, "application/json", bytes.NewBuffer(brainReqBody))
+		brainPayload := BrainRequest{
+			UserID:  body.UserID,
+			Query:   body.Query,
+			History: brainHistory,
+		}
 		
+		DB.Create(&models.ChatHistory{UserID: body.UserID, Role: "user", Text: body.Query})
+
+		jsonPayload, _ := json.Marshal(brainPayload)
+		resp, err := http.Post("http://localhost:8000/brain/v1/process_intent", "application/json", bytes.NewBuffer(jsonPayload))
 		if err != nil {
-			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{"error": "Brain unreachable"})
+			return c.Status(502).JSON(fiber.Map{"error": "Brain Offline"})
 		}
 		defer resp.Body.Close()
 
-		var brainResponse IntentResponse
-		json.NewDecoder(resp.Body).Decode(&brainResponse)
+		var brainRes struct {
+			Message string `json:"message"`
+			Action  string `json:"action"`
+		}
+		json.NewDecoder(resp.Body).Decode(&brainRes)
 
-		return c.JSON(brainResponse)
+		DB.Create(&models.ChatHistory{UserID: body.UserID, Role: "serqet", Text: brainRes.Message})
+
+		return c.JSON(brainRes)
+	})
+
+	app.Get("/api/v1/history", func(c fiber.Ctx) error {
+		var history []models.ChatHistory
+		DB.Order("created_at asc").Limit(20).Find(&history)
+		return c.JSON(history)
 	})
 
 	log.Fatal(app.Listen(":8001"))
