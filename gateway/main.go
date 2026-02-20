@@ -51,6 +51,7 @@ var (
 	activeModules = []Module{
 		{ID: "social", Name: "Social Media", Description: "Manage your social presence.", Icon: "social"},
 		{ID: "finance", Name: "Finances", Description: "Track income and expenses.", Icon: "finance"},
+		{ID: "tasks", Name: "Tasks", Description: "Organize your to-dos.", Icon: "tasks"},
 	}
 	brainServiceURL = "http://localhost:8000/brain/v1/process_intent"
 )
