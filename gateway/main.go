@@ -15,40 +15,8 @@ import (
 	"gorm.io/gorm"
 )
 
-type HistoryMessage struct {
-	Role string `json:"role"`
-	Text string `json:"text"`
-}
-
-type BrainRequest struct {
-	UserID  string           `json:"user_id"`
-	Query   string           `json:"query"`
-	History []HistoryMessage `json:"history"`
-}
-
-type Module struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Icon        string `json:"icon"`
-	Endpoint    string `json:"endpoint"`
-}
-
-type IntentRequest struct {
-	UserID string `json:"user_id"`
-	Query  string `json:"query"`
-}
-
-type IntentResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-	Action  string `json:"action,omitempty"`
-	Data    any    `json:"data,omitempty"`
-}
-
-
 var (
-	activeModules = []Module{
+	activeModules = []models.Module{
 		{ID: "social", Name: "Social Media", Description: "Manage your social presence.", Icon: "social"},
 		{ID: "finance", Name: "Finances", Description: "Track income and expenses.", Icon: "finance"},
 		{ID: "tasks", Name: "Tasks", Description: "Organize your to-dos.", Icon: "tasks"},
@@ -87,15 +55,15 @@ func main() {
 		var dbHistory []models.ChatHistory
 		DB.Where("user_id = ?", body.UserID).Order("created_at desc").Limit(6).Find(&dbHistory)
 		
-		var brainHistory []HistoryMessage
+		var brainHistory []models.HistoryMessage
 		for i := len(dbHistory) - 1; i >= 0; i-- {
-			brainHistory = append(brainHistory, HistoryMessage{
+			brainHistory = append(brainHistory, models.HistoryMessage{
 				Role: dbHistory[i].Role,
 				Text: dbHistory[i].Text,
 			})
 		}
 
-		brainPayload := BrainRequest{
+		brainPayload := models.BrainRequest{
 			UserID:  body.UserID,
 			Query:   body.Query,
 			History: brainHistory,
