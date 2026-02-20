@@ -115,7 +115,6 @@ func main() {
 		}
 		json.NewDecoder(resp.Body).Decode(&brainRes)
 
-		// 5. Save AI Response
 		DB.Create(&models.ChatHistory{UserID: body.UserID, Role: "serqet", Text: brainRes.Message})
 
 		return c.JSON(brainRes)
