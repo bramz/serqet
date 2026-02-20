@@ -1,101 +1,117 @@
 import os
-import uvicorn
-from typing import Annotated, TypedDict
+import re
+from typing import Annotated, TypedDict, List
 from fastapi import FastAPI
 from pydantic import BaseModel
+import uvicorn
+import dotenv
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.chat_models import ChatOllama
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 
-class AgentState(TypedDict):
-    """The state of our conversation/thought process."""
-    user_query: str
-    category: str
-    response: str
-    action_required: str | None
+dotenv.load_dotenv()
+os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY")
+
+app = FastAPI()
+
+gemini_llm = ChatGoogleGenerativeAI(
+    model="gemini-3-flash-preview", 
+    version="v1beta", # preview models require vibeta
+    temperature=0.3,
+    max_retries=1,
+    google_api_key=os.getenv("GEMINI_API_KEY")
+)
+local_llm = ChatOllama(model="llama3.2:3b", temperature=0.2)
+
+class Message(BaseModel):
+    role: str
+    text: str
 
 class IntentRequest(BaseModel):
     user_id: str
     query: str
+    history: List[Message] = []
 
-class IntentResponse(BaseModel):
-    status: str
-    message: str
-    action: str | None = None
-    data: dict | None = None
+class AgentState(TypedDict):
+    messages: List[HumanMessage | AIMessage | SystemMessage]
+    action: str | None
 
+def parse_content(content) -> str:
+    if isinstance(content, list):
+        for item in content:
+            if isinstance(item, dict) and 'text' in item:
+                return item['text']
+    return str(content)
 
-def classifier_node(state: AgentState):
-    """
-      Decide what the user is talking about
-      In a production version, this would be an LLM call:
-      Which module does this query belong to: [Social, Finance, Task, General]?
-    """
-    query = state["user_query"].lower()
+def agent_node(state: AgentState):
+    system_instruction = SystemMessage(content=(
+        "You are Serqet, a 2026-era Personal OS Assistant. "
+        "You have access to Social, Finance, and Task modules. "
+        "Logic: Always include 'ACTION: view_<module>' if navigating. "
+        "Be lightning-fast and concise."
+    ))
     
-    category = "general"
-    if any(word in query for word in ["post", "tweet", "social", "instagram"]):
-        category = "social"
-    elif any(word in query for word in ["money", "spent", "budget", "bank"]):
-        category = "finance"
-    elif any(word in query for word in ["todo", "task", "remind"]):
-        category = "task"
-        
-    return {"category": category}
+    full_prompt = [system_instruction] + state["messages"]
+    action = None
 
-def orchestrator_node(state: AgentState):
-    """Generate a response based on the category."""
-    category = state["category"]
-    query = state["user_query"]
-    
-    responses = {
-        "social": f"I've opened your social media hub. Ready to draft a post about '{query}'?",
-        "finance": "Accessing your encrypted ledgers. Would you like a summary of this week's spending?",
-        "task": f"Adding '{query}' to your high-priority list. Want me to set a deadline?",
-        "general": f"You said: '{query}'. How can I help you manage your life today?"
-    }
-    
-    return {
-        "response": responses.get(category, "I'm not sure how to handle that yet."),
-        "action_required": f"view_{category}" if category != "general" else None
-    }
+    try:
+        print("Attempting gemini")
+        response = gemini_llm.invoke(full_prompt)
+        text = parse_content(response.content)
+        action_match = re.search(r"ACTION:\s*(view_\w+)", text)
+        if action_match:
+            action = action_match.group(1)
+
+        clean_message = re.sub(r"ACTION:\s*view_\w+", "", text).strip()
+
+        print(f"Gemini response: {text}, action: {action}")
+        return {"messages": [AIMessage(content=clean_message)], "action": extract_action(action)}
+    except Exception as e:
+        print(f"Gemini failed: {e}")
+
+    try:
+        print("Falling back to local ollama")
+        response = local_llm.invoke(full_prompt)
+        return {"messages": [response], "action": extract_action(response.content)}
+    except Exception as e:
+        print(f"Ollama failed: {e}")
+
+    error_msg = AIMessage(content="I'm having trouble connecting to my cognitive engines.")
+    return {"messages": [error_msg], "action": None}
 
 
-# Build graph
+def extract_action(content: str):
+    if "view_social" in content: return "view_social"
+    if "view_finance" in content: return "view_finance"
+    if "view_task" in content: return "view_task"
+    return None
+
+
 workflow = StateGraph(AgentState)
-
-# Add nodes
-workflow.add_node("classifier", classifier_node)
-workflow.add_node("orchestrator", orchestrator_node)
-
-# Set flow: start -> classifier -> orchestrator -> end
-workflow.set_entry_point("classifier")
-workflow.add_edge("classifier", "orchestrator")
-workflow.add_edge("orchestrator", END)
-
-# Compile the graph
+workflow.add_node("serqet", agent_node)
+workflow.set_entry_point("serqet")
+workflow.add_edge("serqet", END)
 serqet_brain = workflow.compile()
 
-
-# FastAPI
-app = FastAPI(title="Serqet OS Brain")
-
 @app.post("/brain/v1/process_intent")
-async def process_intent(req: IntentRequest) -> IntentResponse:
-    # Initialize the state
-    initial_state = {
-        "user_query": req.query,
-        "category": "unknown",
-        "response": "",
-        "action_required": None
+async def process_intent(req: IntentRequest):
+    messages = []
+    for m in req.history:
+        role_map = {"user": HumanMessage, "serqet": AIMessage}
+        messages.append(role_map.get(m.role, HumanMessage)(content=m.text))
+    
+    messages.append(HumanMessage(content=req.query))
+    
+    result = serqet_brain.invoke({"messages": messages, "action": None})
+    last_msg = result["messages"][-1].content
+    
+    return {
+        "status": "success",
+        "message": last_msg,
+        "action": result["action"]
     }
-    
-    # Run the graph
-    final_output = serqet_brain.invoke(initial_state)
-    
-    return IntentResponse(
-        status="success",
-        message=final_output["response"],
-        action=final_output["action_required"]
-    )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
