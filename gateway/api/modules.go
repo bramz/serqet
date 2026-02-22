@@ -8,7 +8,7 @@ import (
 var activeModules = []models.Module{
 	{ID: "social", Name: "Social Media", Description: "Manage social presence.", Icon: "social"},
 	{ID: "finance", Name: "Finances", Description: "Track income and expenses.", Icon: "finance"},
-	{ID: "task", Name: "Task", Description: "Organize to-dos.", Icon: "task"},
+	{ID: "tasks", Name: "Tasks", Description: "Organize to-dos.", Icon: "task"},
 	{ID: "jobs", Name: "Jobs", Description: "Track job applications.", Icon: "jobs"},
 }
 
