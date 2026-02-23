@@ -13,6 +13,7 @@ import { SocialModule } from '@/components/modules/SocialModule';
 import { FinanceModule } from '@/components/modules/FinanceModule';
 import { TaskModule } from '@/components/modules/TaskModule';
 import { JobModule } from '@/components/modules/JobModule';
+import { HealthModule } from '@/components/modules/HealthModule';
 
 export default function Home() {
   const [modules, setModules] = useState<Module[]>([]);
@@ -39,6 +40,7 @@ export default function Home() {
           {activeTab === "finance" && <FinanceModule />}
           {activeTab === "tasks" && <TaskModule />}
           {activeTab === "jobs" && <JobModule />}
+          {activeTab === "health" && <HealthModule />}
         </div>
 
         <ChatInterface 

@@ -28,7 +28,7 @@ export function SocialModule() {
               </span>
               <span className="text-xs text-zinc-500">{post.status}</span>
             </div>
-            <p className="text-lg text-zinc-200">{post.content}</p>
+            <p className="text-md text-zinc-200">{post.content}</p>
           </Card>
         ))}
         {posts.length === 0 && <p className="text-zinc-500 italic">No social drafts found.</p>}

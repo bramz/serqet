@@ -41,3 +41,16 @@ func GetJobs(c fiber.Ctx) error {
 	db.Instance.Order("created_at desc").Find(&jobs)
 	return c.JSON(jobs)
 }
+
+func GetHealthStats(c fiber.Ctx) error {
+	var meals []models.DietRecord
+	var workouts []models.WorkoutRecord
+	
+	db.Instance.Order("created_at desc").Limit(10).Find(&meals)
+	db.Instance.Order("created_at desc").Limit(10).Find(&workouts)
+
+	return c.JSON(fiber.Map{
+		"diet": meals,
+		"fitness": workouts,
+	})
+}

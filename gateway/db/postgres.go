@@ -21,6 +21,8 @@ func Connect() error {
 		&models.SocialPost{},
 		&models.JobApplication{},
 		&models.TaskRecord{},
+		&models.DietRecord{},
+		&models.WorkoutRecord{},
 	)
 	Instance = db
 	return nil
