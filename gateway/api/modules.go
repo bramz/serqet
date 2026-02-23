@@ -10,6 +10,7 @@ var activeModules = []models.Module{
 	{ID: "finance", Name: "Finances", Description: "Track income and expenses.", Icon: "finance"},
 	{ID: "tasks", Name: "Tasks", Description: "Organize to-dos.", Icon: "task"},
 	{ID: "jobs", Name: "Jobs", Description: "Track job applications.", Icon: "jobs"},
+	{ID: "health", Name: "Health", Description: "Monitor diet and workouts.", Icon: "health"},
 }
 
 func GetModules(c fiber.Ctx) error {

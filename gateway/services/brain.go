@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"gateway/models"
+	"log"
 )
 
 type BrainResponse struct {
@@ -25,6 +26,7 @@ func RequestIntent(userID string, query string, history []models.ChatHistory) (*
 		"query":   query,
 		"history": brainHistory,
 	})
+	log.Printf("Sending intent request to Brain with payload: %s\n", string(payload))
 
 	resp, err := http.Post("http://localhost:8000/brain/v1/process_intent", "application/json", bytes.NewBuffer(payload))
 	if err != nil {

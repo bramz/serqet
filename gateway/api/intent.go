@@ -5,6 +5,7 @@ import (
 	"gateway/models"
 	"gateway/services"
 	"github.com/gofiber/fiber/v3"
+	"log"
 )
 
 func HandleIntent(c fiber.Ctx) error {
@@ -24,11 +25,13 @@ func HandleIntent(c fiber.Ctx) error {
 
 	db.Instance.Create(&models.ChatHistory{UserID: body.UserID, Role: "user", Text: body.Query})
 
+	log.Printf("Brain response: %+v\n", brainRes)
 	if brainRes.Action != "" {
 		msg, action := services.ExecuteToolCall(brainRes.Action, brainRes.Data)
 		if msg != "" {
 			brainRes.Message = msg
 			brainRes.Action = action
+			log.Printf("Executed action: %s, got message: %s\n", action, msg)
 		}
 	}
 
