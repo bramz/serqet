@@ -5,6 +5,7 @@ import (
 	"gateway/db"
 	"gateway/models"
 	"log"
+	"strconv"
 )
 
 
@@ -68,6 +69,49 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 			db.Instance.Create(&workout)
 			return fmt.Sprintf("Workout recorded: %s.", workout.Exercise), "view_health"
+
+		case "execute_sync_portfolio":
+			balances, err := FetchKrakenBalances()
+			if err != nil {
+				log.Printf("Kraken Sync Failed: %v", err)
+				return fmt.Sprintf("Failed to sync with Kraken. Error: %v", err), ""
+			}
+
+			count := 0
+			for asset, val := range balances {
+				amount, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					continue
+				}
+				if amount > 0 {
+					// Update local DB
+					db.Instance.Where(models.CryptoHoldings{Asset: asset}).
+						Assign(models.CryptoHoldings{Balance: amount}).
+						FirstOrCreate(&models.CryptoHoldings{})
+					count++
+				}
+			}
+
+			return fmt.Sprintf("Successfully synchronized %d assets from Kraken.", count), "view_finance"
+			
+		// case "execute_crypto_trade":
+		// 	pair := getString(data, "pair")
+		// 	side := getString(data, "side")
+		// 	volume := getFloat(data, "volume")
+
+		// 	log.Printf("[TRADER] AI requesting %s of %v on %s", side, volume, pair)
+
+		// 	// 1. Logic to call Kraken's /0/private/AddOrder
+		// 	// 2. Log the trade to our DB
+		// 	trade := models.TradeLog{
+		// 		Pair:   pair,
+		// 		Side:   side,
+		// 		Amount: volume,
+		// 		Status: "Executed",
+		// 	}
+		// 	db.Instance.Create(&trade)
+
+		// 	return fmt.Sprintf("AI successfully executed a %s order for %v %s.", side, volume, pair), "view_finance"
 	}
 
 	return "", ""

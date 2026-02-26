@@ -4,14 +4,22 @@ from langchain_core.messages import AIMessage, SystemMessage
 from agents.state import AgentState
 from providers.factory import get_llm
 from tools.social import create_social_draft
-from tools.finance import record_expense
+from tools.finance import record_expense, sync_portfolio, get_portfolio_summary
 from tools.tasks import create_task
 from tools.jobs import track_job_application
 from tools.health import record_meal, record_workout
 from utils.parser import parse_content
 
 # Registry of all tools
-TOOL_LIST = [create_social_draft, record_expense, create_task, track_job_application, record_meal, record_workout]
+TOOL_LIST = [
+    create_social_draft, 
+    record_expense, 
+    create_task, 
+    track_job_application, 
+    record_meal, 
+    record_workout, 
+    sync_portfolio, 
+    get_portfolio_summary]
 
 def agent_node(state: AgentState):
     llm = get_llm("gemini").bind_tools(TOOL_LIST)
@@ -44,7 +52,7 @@ def agent_node(state: AgentState):
 
         # Double check: Did the AI talk about food but forgot the tool?
         if any(word in text.lower() for word in ["ate", "calories", "meal", "food"]):
-            print("--- BRAIN WARNING: AI missed a health tool call! ---")
+            print("BRAIN WARNING: AI missed a health tool call!")
             
         return {
             "messages": [AIMessage(content=re.sub(r"ACTION:\s*view_\w+", "", text).strip())],

@@ -3,6 +3,10 @@ package api
 import (
 	"gateway/db"
 	"gateway/models"
+	"gateway/services"
+	"log"
+	"strconv"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -53,4 +57,38 @@ func GetHealthStats(c fiber.Ctx) error {
 		"diet": meals,
 		"fitness": workouts,
 	})
+}
+
+func SyncHoldings(c fiber.Ctx) error {
+	balances, err := services.FetchKrakenBalances()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	for asset, amountStr := range balances {
+		amount := parseNumeric(amountStr)
+		log.Printf("%f", amount)
+		if amount > 0 {
+			db.Instance.Where(models.CryptoHoldings{Asset: asset}).
+				Assign(models.CryptoHoldings{Balance: amount}).
+				FirstOrCreate(&models.CryptoHoldings{})
+		}
+	}
+
+	return c.JSON(fiber.Map{"status": "success", "synced": len(balances)})
+}
+
+func parseNumeric(amountStr string) float64 {
+	amount, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return 0.0
+	}
+	return amount
+}
+
+
+func GetCryptoHoldings(c fiber.Ctx) error {
+	var holdings []models.CryptoHoldings
+	db.Instance.Find(&holdings)
+	return c.JSON(holdings)
 }
