@@ -60,7 +60,7 @@ func GetHealthStats(c fiber.Ctx) error {
 }
 
 func SyncHoldings(c fiber.Ctx) error {
-	balances, err := services.FetchKrakenBalance()
+	balances, err := services.FetchKrakenBalances()
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -69,7 +69,6 @@ func SyncHoldings(c fiber.Ctx) error {
 		amount := parseNumeric(amountStr)
 		log.Printf("%f", amount)
 		if amount > 0 {
-			// Update or Create the holding
 			db.Instance.Where(models.CryptoHoldings{Asset: asset}).
 				Assign(models.CryptoHoldings{Balance: amount}).
 				FirstOrCreate(&models.CryptoHoldings{})
@@ -80,8 +79,6 @@ func SyncHoldings(c fiber.Ctx) error {
 }
 
 func parseNumeric(amountStr string) float64 {
-	// Implement parsing logic to convert string to float64
-	// Handle potential errors and return a default value if parsing fails
 	amount, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil {
 		return 0.0

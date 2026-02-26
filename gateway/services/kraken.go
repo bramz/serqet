@@ -1,58 +1,60 @@
 package services
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
+	"strings"
 	"time"
-	"crypto/hmac"
-	"crypto/sha256"
-	"crypto/sha512"
-	"encoding/base64"
-	// "net/url"
 )
 
-const KrakenBaseURL = "https://api.kraken.com"
-
-func GetKrakenSignature(path string, values url.Values, secret string) (string, error) {
+func getKrakenSignature(urlPath string, values url.Values, secret string) (string, error) {
 	sha := sha256.New()
 	sha.Write([]byte(values.Get("nonce") + values.Encode()))
 	shasum := sha.Sum(nil)
 
-	secretBytes, _ := base64.StdEncoding.DecodeString(secret)
+	secretBytes, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		return "", err
+	}
+
 	mac := hmac.New(sha512.New, secretBytes)
-	mac.Write(append([]byte(path), shasum...))
-	
+	mac.Write(append([]byte(urlPath), shasum...))
 	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
-func FetchKrakenBalance() (map[string]string, error) {
+func FetchKrakenBalances() (map[string]string, error) {
 	apiKey := os.Getenv("KRAKEN_API_KEY")
-	apiSecret := os.Getenv("KRAKEN_SECRET_KEY")
-	path := "/0/private/Balance"
+	secret := os.Getenv("KRAKEN_SECRET_KEY")
+	urlPath := "/0/private/Balance"
 
-	// 1. Create Nonce
-	nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
+	// Kraken needs nonce in the POST body
+	nonce := fmt.Sprintf("%d", time.Now().UnixNano())
 	values := url.Values{}
 	values.Set("nonce", nonce)
 
-	// 2. Generate Signature (from previous logic)
-	signature, err := GetKrakenSignature(path, values, apiSecret)
+	sig, err := getKrakenSignature(urlPath, values, secret)
+	if err != nil {
+		return nil, fmt.Errorf("Signature error: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.kraken.com"+urlPath, strings.NewReader(values.Encode()))
 	if err != nil {
 		return nil, err
 	}
 
-	// 3. Prepare Request
-	req, _ := http.NewRequest("POST", KrakenBaseURL+path, nil)
 	req.Header.Set("API-Key", apiKey)
-	req.Header.Set("API-Sign", signature)
+	req.Header.Set("API-Sign", sig)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -60,11 +62,14 @@ func FetchKrakenBalance() (map[string]string, error) {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+
 	var result struct {
 		Result map[string]string `json:"result"`
 		Error  []string          `json:"error"`
 	}
-	json.Unmarshal(body, &result)
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("Decode error: %v", err)
+	}
 
 	if len(result.Error) > 0 {
 		return nil, fmt.Errorf("Kraken API Error: %v", result.Error)

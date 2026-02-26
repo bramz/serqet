@@ -52,7 +52,7 @@ def agent_node(state: AgentState):
 
         # Double check: Did the AI talk about food but forgot the tool?
         if any(word in text.lower() for word in ["ate", "calories", "meal", "food"]):
-            print("--- BRAIN WARNING: AI missed a health tool call! ---")
+            print("BRAIN WARNING: AI missed a health tool call!")
             
         return {
             "messages": [AIMessage(content=re.sub(r"ACTION:\s*view_\w+", "", text).strip())],

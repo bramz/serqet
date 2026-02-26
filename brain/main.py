@@ -18,6 +18,7 @@ async def process_intent(req: IntentRequest):
     
     result = serqet_brain.invoke({"messages": messages, "action": None, "tool_data": None})
     
+    print(result)
     last_msg = result["messages"][-1]
     return {
         "status": "success",
