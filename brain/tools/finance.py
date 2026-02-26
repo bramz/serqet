@@ -42,6 +42,15 @@ def get_portfolio_summary():
     """
     return {"action": "api_get_holdings"}
 
+@tool
+def analyze_net_worth():
+    """
+    Calculates the user's total net worth by combining local expenses, 
+    income records, and Kraken crypto holdings.
+    Use this when the user asks 'How am I doing financially?' or 'What is my net worth?'.
+    """
+    return {"action": "api_get_net_worth_analysis"}
+
 # @tool
 # def execute_kraken_trade(pair: str, action: str, volume: float, order_type: str = "market"):
 #     """

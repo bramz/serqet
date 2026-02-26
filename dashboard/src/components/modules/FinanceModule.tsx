@@ -4,9 +4,9 @@ import { DollarSign } from "lucide-react";
 import { GATEWAY_URL } from '@/lib/constants';
 
 
-function CryptoTerminal() {
+function CryptoTerminal({ summary }: { summary: { total_expenses: number; recent_records: any[] } }) {
   // const [prices, setPrices] = useState({ BTC: 0, ETH: 0 });
-  const [holdings, setHoldings] = useState([]);
+  const [holdings, setHoldings] = useState<{ID: string, asset: string, balance: number}[]>([]);
 
   useEffect(() => {
       fetch(`${GATEWAY_URL}/api/v1/finance/holdings`)
@@ -28,7 +28,25 @@ function CryptoTerminal() {
                 </Card>
             ))}
         </div>
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="bg-gradient-to-br from-zinc-900 to-black border-zinc-800 p-6 serqet-glow">
+            <CardTitle className="text-zinc-500 text-xs uppercase">Liquidity Index</CardTitle>
+            <div className="mt-2 text-2xl font-bold text-white">
+              {holdings.length} Assets Tracked
+            </div>
+            <p className="text-[10px] text-green-500 mt-1">Live from Kraken API</p>
+          </Card>
+
+          {/* <Card className="bg-gradient-to-br from-zinc-900 to-black border-zinc-800 p-6">
+            <CardTitle className="text-zinc-500 text-xs uppercase">Total Outflow</CardTitle>
+            <div className="mt-2 text-2xl font-bold text-red-400">
+              ${summary.total_expenses.toLocaleString()}
+            </div>
+            <p className="text-[10px] text-zinc-600 mt-1">Manual + AI recorded</p>
+          </Card> */}
+        </section>
     </div>
+
     // <div className="space-y-4">
     //   <h3 className="text-zinc-400">Live Crypto Holdings</h3>
     //   <div className="grid grid-cols-2 gap-4">
@@ -102,7 +120,7 @@ export function FinanceModule() {
         </div>
       </div>
       ) : (
-        <CryptoTerminal />
+        <CryptoTerminal summary={summary} />
       )}
     </div>
   );
