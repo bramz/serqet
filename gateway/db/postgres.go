@@ -18,6 +18,7 @@ func Connect() error {
 	db.AutoMigrate(
 		&models.ChatHistory{},
 		&models.FinanceRecord{},
+		&models.CryptoHoldings{},
 		&models.SocialPost{},
 		&models.JobApplication{},
 		&models.TaskRecord{},

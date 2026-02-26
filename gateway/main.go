@@ -26,6 +26,9 @@ func main() {
 	v1.Get("/tasks", api.GetTasks)
     v1.Get("/jobs", api.GetJobs)
     v1.Get("/finance/summary", api.GetFinanceSummary)
+	v1.Get("/finance/holdings", api.GetCryptoHoldings)
+	v1.Get("/finance/sync", api.SyncHoldings)
+
 	v1.Get("/health/stats", api.GetHealthStats)
 
 	log.Fatal(app.Listen(":8001"))

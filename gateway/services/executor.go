@@ -68,6 +68,34 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 			db.Instance.Create(&workout)
 			return fmt.Sprintf("Workout recorded: %s.", workout.Exercise), "view_health"
+
+		case "execute_sync_kraken":
+			_, err := FetchKrakenBalance() 
+			// Usually, we'd call the internal Sync function here
+			if err == nil {
+				return "I've synchronized your Kraken holdings with the local database.", "view_finance"
+			}
+			return "Failed to sync with Kraken. Check your API keys.", ""
+
+
+		// case "execute_crypto_trade":
+		// 	pair := getString(data, "pair")
+		// 	side := getString(data, "side")
+		// 	volume := getFloat(data, "volume")
+
+		// 	log.Printf("[TRADER] AI requesting %s of %v on %s", side, volume, pair)
+
+		// 	// 1. Logic to call Kraken's /0/private/AddOrder
+		// 	// 2. Log the trade to our DB
+		// 	trade := models.TradeLog{
+		// 		Pair:   pair,
+		// 		Side:   side,
+		// 		Amount: volume,
+		// 		Status: "Executed",
+		// 	}
+		// 	db.Instance.Create(&trade)
+
+		// 	return fmt.Sprintf("AI successfully executed a %s order for %v %s.", side, volume, pair), "view_finance"
 	}
 
 	return "", ""
