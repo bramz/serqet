@@ -29,8 +29,13 @@ def agent_node(state: AgentState):
             "Logic: If a tool is needed, call it. If not, respond concisely. "
             "Always include 'ACTION: view_<module>' if navigating manually. "
             "IMPORTANT RULES: "
-            "1. If the user mentions eating, food, or calories, YOU MUST USE the 'record_meal' tool. "
-            "2. If the user mentions working out or exercise, YOU MUST USE the 'record_workout' tool. "
+            "If the user mentions eating, food, or calories, YOU MUST USE the 'record_meal' tool. "
+            "If the user mentions working out or exercise, YOU MUST USE the 'record_workout' tool. "    
+            "When market data is provided, analyze the RSI and Trend. "
+            "If RSI < 30, it is Oversold (Potential BUY). "
+            "If RSI > 70, it is Overbought (Potential SELL). "
+            "Always provide a 'Confidence' score and a 'Reasoning' string."
+            "If you want to suggest a trade, use ACTION: view_finance and describe the signal."
     ))
     
     try:

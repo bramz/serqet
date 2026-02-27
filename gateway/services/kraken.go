@@ -8,12 +8,46 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
+
+type Candle struct {
+	Time   int64   `json:"time"`
+	Open   float64 `json:"open"`
+	High   float64 `json:"high"`
+	Low    float64 `json:"low"`
+	Close  float64 `json:"close"`
+	Volume float64 `json:"volume"`
+}
+
+// todo: add as util
+func parseNumeric(val interface{}) float64 {
+	if val == nil {
+		return 0
+	}
+	switch v := val.(type) {
+	case float64:
+		return v
+	case int64:
+		return float64(v)
+	case int:
+		return float64(v)
+	case string:
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0
+		}
+		return f
+	default:
+		return 0
+	}
+}
 
 func getKrakenSignature(urlPath string, values url.Values, secret string) (string, error) {
 	sha := sha256.New()
@@ -76,4 +110,71 @@ func FetchKrakenBalances() (map[string]string, error) {
 	}
 
 	return result.Result, nil
+}
+
+func FetchOHLC(pair string) (interface{}, error) {
+	// urlPath := fmt.Sprintf("/0/public/OHLC?pair=%s&interval=60", pair)
+	// resp, err := http.Get(KrakenBaseURL + urlPath)
+	resp, err := http.Get(fmt.Sprintf("https://api.kraken.com/0/public/OHLC?pair=%s&interval=60", pair))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Result map[string]interface{} `json:"result"`
+		Error  []string               `json:"error"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+	
+	if len(result.Error) > 0 {
+		return nil, fmt.Errorf("kraken error: %v", result.Error)
+	}
+
+	return result.Result, nil
+}
+
+func FetchMarketCandles(pair string) ([]Candle, error) {
+	// interval=60 is 1-hour candles.
+	// url := fmt.Sprintf("%s/0/public/OHLC?pair=%s&interval=60", KrakenBaseURL, pair)
+	url := fmt.Sprintf("https://api.kraken.com/0/public/OHLC?pair=%s&interval=60", pair)
+	
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var raw struct {
+		Result map[string]interface{} `json:"result"`
+		Error  []string               `json:"error"`
+	}
+	json.NewDecoder(resp.Body).Decode(&raw)
+
+	if len(raw.Error) > 0 {
+		return nil, fmt.Errorf("kraken error: %v", raw.Error)
+	}
+
+	// Kraken returns the pair name as the key (e.g., "XXBTZUSD") iterate to find the slice of data
+	var candles []Candle
+	for k, v := range raw.Result {
+		if k == "last" { continue }
+		
+		rawSlice := v.([]interface{})
+		for _, item := range rawSlice {
+			c := item.([]interface{})
+			log.Printf("Raw candle data: %v", c)
+			// Kraken OHLC Format: [time, open, high, low, close, vwap, volume, count]
+			candles = append(candles, Candle{
+				Time:  int64(parseNumeric(c[0])),
+				Open:  parseNumeric(c[1]),
+				High:  parseNumeric(c[2]),
+				Low:   parseNumeric(c[3]),
+				Close: parseNumeric(c[4]),
+				Volume: parseNumeric(c[6]),
+			})
+		}
+	}
+
+	return candles, nil
 }

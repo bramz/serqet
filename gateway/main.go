@@ -3,6 +3,7 @@ package main
 import (
 	"gateway/api"
 	"gateway/db"
+	"gateway/services"
 	"log"
 
 	"github.com/gofiber/fiber/v3"
@@ -19,6 +20,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	go services.StartAutonomousAnalyst() 
+
 	app := fiber.New()
 	app.Use(cors.New())
 
@@ -29,9 +32,15 @@ func main() {
 	v1.Get("/social/posts", api.GetSocialPosts)
 	v1.Get("/tasks", api.GetTasks)
     v1.Get("/jobs", api.GetJobs)
+
+	// Finance
     v1.Get("/finance/summary", api.GetFinanceSummary)
 	v1.Get("/finance/holdings", api.GetCryptoHoldings)
 	v1.Get("/finance/sync", api.SyncHoldings)
+	v1.Get("/finance/signals", api.GetSignals)
+	v1.Patch("/finance/signals/:id", api.UpdateSignalStatus)
+
+	// health
 	v1.Get("/health/stats", api.GetHealthStats)
 
 	log.Fatal(app.Listen(":8001"))

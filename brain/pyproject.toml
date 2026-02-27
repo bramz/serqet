@@ -12,5 +12,6 @@ dependencies = [
     "langchain-google-genai>=4.2.0",
     "langchain-openai>=1.1.9",
     "langgraph>=1.0.8",
+    "pandas>=3.0.1",
     "uvicorn>=0.41.0",
 ]
