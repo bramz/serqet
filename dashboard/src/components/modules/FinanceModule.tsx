@@ -4,9 +4,42 @@ import { DollarSign } from "lucide-react";
 import { GATEWAY_URL } from '@/lib/constants';
 
 
-function CryptoTerminal() {
+function TradingSignals() {
+  const [signals, setSignals] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${GATEWAY_URL}/api/v1/finance/signals`).then(res => res.json()).then(setSignals);
+    console.log("Fetched trading signals:", signals);
+  }, []);
+
+  return (
+    <div className="mt-8 space-y-4">
+      <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-widest">AI Trading Signals</h3>
+      {signals.map(s => (
+        <Card key={s.ID} className={`bg-zinc-950 border-l-4 p-4 ${
+          s.action === 'BUY' ? 'border-l-green-500' : 'border-l-red-500'
+        }`}>
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-white font-bold">{s.action} {s.asset}</span>
+              <p className="text-xs text-zinc-500 mt-1">{s.reasoning}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-mono text-zinc-400">Conf: {(s.confidence * 100).toFixed(0)}%</p>
+              <button className="mt-2 h-7 text-[10px] bg-zinc-800 hover:bg-zinc-700">
+                Approve Trade
+              </button>
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function CryptoTerminal({ summary }: { summary: { total_expenses: number; recent_records: any[] } }) {
   // const [prices, setPrices] = useState({ BTC: 0, ETH: 0 });
-  const [holdings, setHoldings] = useState([]);
+  const [holdings, setHoldings] = useState<{ID: string, asset: string, balance: number}[]>([]);
 
   useEffect(() => {
       fetch(`${GATEWAY_URL}/api/v1/finance/holdings`)
@@ -28,7 +61,25 @@ function CryptoTerminal() {
                 </Card>
             ))}
         </div>
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="bg-gradient-to-br from-zinc-900 to-black border-zinc-800 p-6 serqet-glow">
+            <CardTitle className="text-zinc-500 text-xs uppercase">Liquidity Index</CardTitle>
+            <div className="mt-2 text-2xl font-bold text-white">
+              {holdings.length} Assets Tracked
+            </div>
+            <p className="text-[10px] text-green-500 mt-1">Live from Kraken API</p>
+          </Card>
+
+          {/* <Card className="bg-gradient-to-br from-zinc-900 to-black border-zinc-800 p-6">
+            <CardTitle className="text-zinc-500 text-xs uppercase">Total Outflow</CardTitle>
+            <div className="mt-2 text-2xl font-bold text-red-400">
+              ${summary.total_expenses.toLocaleString()}
+            </div>
+            <p className="text-[10px] text-zinc-600 mt-1">Manual + AI recorded</p>
+          </Card> */}
+        </section>
     </div>
+
     // <div className="space-y-4">
     //   <h3 className="text-zinc-400">Live Crypto Holdings</h3>
     //   <div className="grid grid-cols-2 gap-4">
@@ -68,6 +119,7 @@ export function FinanceModule() {
   return (
     <div className="animate-in fade-in duration-500 space-y-6">
       <h2 className="text-3xl font-bold flex items-center gap-2"><DollarSign className="text-green-500" /> Finance Ledger</h2>
+        <TradingSignals />
         <div className="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800">
           <button 
             onClick={() => setSubTab("fiat")}
@@ -102,7 +154,7 @@ export function FinanceModule() {
         </div>
       </div>
       ) : (
-        <CryptoTerminal />
+        <CryptoTerminal summary={summary} />
       )}
     </div>
   );

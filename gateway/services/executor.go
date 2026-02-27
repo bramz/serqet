@@ -93,6 +93,21 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 
 			return fmt.Sprintf("Successfully synchronized %d assets from Kraken.", count), "view_finance"
+
+
+		case "execute_save_trading_signal":
+			signal := models.TradingSignal{
+				Asset:     data["asset"].(string),
+				Action:    data["action"].(string),
+				Price:     data["price"].(float64),
+				Reasoning: data["reasoning"].(string),
+				Confidence: data["confidence"].(float64),
+				Status:    "Pending",
+			}
+			db.Instance.Create(&signal)
+			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
+
+		
 			
 		// case "execute_crypto_trade":
 		// 	pair := getString(data, "pair")

@@ -24,6 +24,7 @@ func Connect() error {
 		&models.TaskRecord{},
 		&models.DietRecord{},
 		&models.WorkoutRecord{},
+		&models.TradingSignal{},
 	)
 	Instance = db
 	return nil

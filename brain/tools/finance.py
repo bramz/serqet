@@ -1,5 +1,7 @@
-from langchain_core.tools import tool
 import requests
+import pandas as pd
+from langchain_core.tools import tool
+
 
 @tool
 def record_expense(amount: float, category: str, description: str):
@@ -41,6 +43,79 @@ def get_portfolio_summary():
     Use this to answer questions about what assets the user owns.
     """
     return {"action": "api_get_holdings"}
+
+@tool
+def analyze_net_worth():
+    """
+    Calculates the user's total net worth by combining local expenses, 
+    income records, and Kraken crypto holdings.
+    Use this when the user asks 'How am I doing financially?' or 'What is my net worth?'.
+    """
+    return {"action": "api_get_net_worth_analysis"}
+
+@tool
+def analyze_technical_indicators(ohlc_data: list):
+    """
+    Calculates RSI and Moving Averages from OHLC data.
+    Input should be a list of price candles.
+    """
+    df = pd.DataFrame(ohlc_data, columns=['time', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
+    df['close'] = df['close'].astype(float)
+    
+    sma_20 = df['close'].rolling(window=20).mean().iloc[-1]
+    
+    delta = df['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs)).iloc[-1]
+    
+    return {
+        "current_price": df['close'].iloc[-1],
+        "rsi": round(rsi, 2),
+        "sma_20": round(sma_20, 2),
+        "trend": "Bullish" if df['close'].iloc[-1] > sma_20 else "Bearish"
+    }
+
+
+@tool
+def generate_trading_signal(asset: str, candles: list):
+    """
+    Analyzes price candles to generate a BUY/SELL/HOLD signal.
+    Calculates RSI and Moving Averages.
+    """
+    # Convert list of dicts to DataFrame
+    df = pd.DataFrame(candles)
+    df['close'] = df['close'].astype(float)
+    
+    # Simple RSI calculation
+    delta = df['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs)).iloc[-1]
+    
+    action = "HOLD"
+    confidence = 0.5
+    reasoning = f"RSI is neutral at {rsi:.2f}"
+
+    if rsi < 35:
+        action = "BUY"
+        confidence = 0.8
+        reasoning = f"Asset is oversold (RSI: {rsi:.2f}). Potential reversal."
+    elif rsi > 65:
+        action = "SELL"
+        confidence = 0.75
+        reasoning = f"Asset is overbought (RSI: {rsi:.2f}). Taking profits recommended."
+
+    return {
+        "action": "execute_save_trading_signal",
+        "asset": asset,
+        "signal_action": action,
+        "price": df['close'].iloc[-1],
+        "reasoning": reasoning,
+        "confidence": confidence
+    }
 
 # @tool
 # def execute_kraken_trade(pair: str, action: str, volume: float, order_type: str = "market"):

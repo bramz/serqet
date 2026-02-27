@@ -92,3 +92,25 @@ func GetCryptoHoldings(c fiber.Ctx) error {
 	db.Instance.Find(&holdings)
 	return c.JSON(holdings)
 }
+
+func GetSignals(c fiber.Ctx) error {
+	var signals []models.TradingSignal
+	
+	result := db.Instance.Order("status desc, created_at desc").Limit(10).Find(&signals)
+	if result.Error != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Could not fetch trading signals"})
+	}
+
+	return c.JSON(signals)
+}
+
+func UpdateSignalStatus(c fiber.Ctx) error {
+	id := c.Params("id")
+	var body struct {
+		Status string `json:"status"`
+	}
+	c.Bind().JSON(&body)
+
+	db.Instance.Model(&models.TradingSignal{}).Where("id = ?", id).Update("status", body.Status)
+	return c.JSON(fiber.Map{"status": "updated"})
+}
