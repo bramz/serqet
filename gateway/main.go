@@ -43,5 +43,8 @@ func main() {
 	// health
 	v1.Get("/health/stats", api.GetHealthStats)
 
+	// research
+	v1.Get("/research", api.GetResearch)
+
 	log.Fatal(app.Listen(":8001"))
 }

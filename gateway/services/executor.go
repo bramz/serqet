@@ -96,7 +96,7 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 
 
 		case "execute_save_trading_signal":
-			signal := models.TradingSignal{
+			signal := models.TradingSignals{
 				Asset:     data["asset"].(string),
 				Action:    data["action"].(string),
 				Price:     data["price"].(float64),
@@ -107,7 +107,16 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			db.Instance.Create(&signal)
 			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
-		
+		case "execute_web_research":
+			report := models.ResearchReports{
+				Query:   data["query"].(string),
+				Findings: data["findings"].(string),
+				Category: "General Intelligence",
+			}
+			db.Instance.Create(&report)
+			return fmt.Sprintf("Research complete for: %s. Report saved.", report.Query), "view_research"
+
+				
 			
 		// case "execute_crypto_trade":
 		// 	pair := getString(data, "pair")
