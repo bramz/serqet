@@ -34,8 +34,9 @@ def agent_node(state: AgentState):
             "When market data is provided, analyze the RSI and Trend. "
             "If RSI < 30, it is Oversold (Potential BUY). "
             "If RSI > 70, it is Overbought (Potential SELL). "
-            "Always provide a 'Confidence' score and a 'Reasoning' string."
-            "If you want to suggest a trade, use ACTION: view_finance and describe the signal."
+            "Always provide a 'Confidence' score and a 'Reasoning' string. "
+            "If you want to suggest a trade, use ACTION: view_finance and describe the signal. "
+            "If the user mentions research, use the web_research tool and use Action: view_research. "
     ))
     
     try:

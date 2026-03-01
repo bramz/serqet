@@ -108,15 +108,22 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
 		case "execute_web_research":
+			log.Printf("Saving research for query: %s", data["query"])
+			
 			report := models.ResearchReports{
-				Query:   data["query"].(string),
+				Query: data["query"].(string),
 				Findings: data["findings"].(string),
-				Category: "General Intelligence",
+				Category: "Web Intelligence",
 			}
-			db.Instance.Create(&report)
-			return fmt.Sprintf("Research complete for: %s. Report saved.", report.Query), "view_research"
+			
+			result := db.Instance.Create(&report)
+			if result.Error != nil {
+				log.Printf("Research save failed: %v", result.Error)
+				return "Search completed, but I couldn't save the report to the database.", ""
+			}
 
-				
+			return fmt.Sprintf("I've finished researching '%s'. The report is ready in your Research Hub.", report.Query), "view_research"
+						
 			
 		// case "execute_crypto_trade":
 		// 	pair := getString(data, "pair")
