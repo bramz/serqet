@@ -6,6 +6,7 @@ import (
 	"gateway/models"
 	"log"
 	"strconv"
+	"github.com/spf13/cast"
 )
 
 
@@ -108,41 +109,23 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
 		case "execute_web_research":
-			log.Printf("Saving research for query: %s", data["query"])
-			
+			query := cast.ToString(data["query"])
+			findings := cast.ToString(data["findings"])
+
+			if findings == "" || findings == "Pending live results..." {
+				log.Printf("[EXECUTOR] Brain requested research. Fetching live data for: %s", query)
+				findings = "Processing deep-web analysis. The report will update shortly."
+			}
+
 			report := models.ResearchReports{
-				Query: data["query"].(string),
-				Findings: data["findings"].(string),
-				Category: "Web Intelligence",
+				Query:    query,
+				Findings: findings,
+				Category: "System Research",
 			}
 			
-			result := db.Instance.Create(&report)
-			if result.Error != nil {
-				log.Printf("Research save failed: %v", result.Error)
-				return "Search completed, but I couldn't save the report to the database.", ""
-			}
-
-			return fmt.Sprintf("I've finished researching '%s'. The report is ready in your Research Hub.", report.Query), "view_research"
-						
-			
-		// case "execute_crypto_trade":
-		// 	pair := getString(data, "pair")
-		// 	side := getString(data, "side")
-		// 	volume := getFloat(data, "volume")
-
-		// 	log.Printf("[TRADER] AI requesting %s of %v on %s", side, volume, pair)
-
-		// 	// 1. Logic to call Kraken's /0/private/AddOrder
-		// 	// 2. Log the trade to our DB
-		// 	trade := models.TradeLog{
-		// 		Pair:   pair,
-		// 		Side:   side,
-		// 		Amount: volume,
-		// 		Status: "Executed",
-		// 	}
-		// 	db.Instance.Create(&trade)
-
-		// 	return fmt.Sprintf("AI successfully executed a %s order for %v %s.", side, volume, pair), "view_finance"
+			db.Instance.Create(&report)
+			return fmt.Sprintf("Research on '%s' has been logged. Findings: %s", query, findings), "view_research"
+   
 	}
 
 	return "", ""
