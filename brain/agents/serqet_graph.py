@@ -25,17 +25,24 @@ def agent_node(state: AgentState):
     llm = get_llm("gemini").bind_tools(TOOL_LIST)
     
     system_instruction = SystemMessage(content=(
-            "You are Serqet, a 2026-era personal assistant. "
-            "Logic: If a tool is needed, call it. If not, respond concisely. "
-            "Always include 'ACTION: view_<module>' if navigating manually. "
-            "IMPORTANT RULES: "
-            "If the user mentions eating, food, or calories, YOU MUST USE the 'record_meal' tool. "
-            "If the user mentions working out or exercise, YOU MUST USE the 'record_workout' tool. "    
-            "When market data is provided, analyze the RSI and Trend. "
-            "If RSI < 30, it is Oversold (Potential BUY). "
-            "If RSI > 70, it is Overbought (Potential SELL). "
-            "Always provide a 'Confidence' score and a 'Reasoning' string."
-            "If you want to suggest a trade, use ACTION: view_finance and describe the signal."
+            "You are Serqet OS, a 2026-era personal assistant. "
+            "CRITICAL TOOL RULES:\n"
+            "1. If the user asks to 'research', 'search', or 'find' current info, you MUST call the 'web_research' tool. DO NOT answer from memory.\n"
+            "2. If the user mentions health/food/workout, you MUST call the respective health tool.\n"
+            "3. If the user mentions finances/kraken, you MUST call the respective 'view_finance' tool.\n"
+            "4. NEVER include 'ACTION: view_...' in your text if you are calling a tool. The system handles navigation automatically when tools are executed.\n"
+            "5. If NO tool is called, only then respond conversationally and optionally include 'ACTION: view_<module>'."
+            # "Logic: If a tool is needed, call it. If not, respond concisely. "
+            # "Always include 'ACTION: view_<module>' if navigating manually. "
+            # "IMPORTANT RULES: "
+            # "If the user mentions eating, food, or calories, YOU MUST USE the 'record_meal' tool. "
+            # "If the user mentions working out or exercise, YOU MUST USE the 'record_workout' tool. "    
+            # "When market data is provided, analyze the RSI and Trend. "
+            # "If RSI < 30, it is Oversold (Potential BUY). "
+            # "If RSI > 70, it is Overbought (Potential SELL). "
+            # "Always provide a 'Confidence' score and a 'Reasoning' string. "
+            # "If you want to suggest a trade, use ACTION: view_finance and describe the signal. "
+            # "If the user mentions research, use the web_research tool and use Action: view_research. "
     ))
     
     try:
@@ -44,6 +51,8 @@ def agent_node(state: AgentState):
         # Tool execution branch
         if hasattr(response, 'tool_calls') and response.tool_calls:
             tool_call = response.tool_calls[0]
+            print(f"TOOL TRIGGERED: {tool_call['name']} ")
+
             return {
                 "messages": [response], 
                 "action": f"execute_{tool_call['name']}",

@@ -5,6 +5,7 @@ description = "Serqet brain"
 requires-python = ">=3.14"
 dependencies = [
     "dotenv>=0.9.9",
+    "duckduckgo-search>=8.1.1",
     "fastapi>=0.129.0",
     "langchain>=1.2.10",
     "langchain-community>=0.4.1",

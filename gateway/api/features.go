@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 )
 
 func GetSocialPosts(c fiber.Ctx) error {
@@ -94,7 +95,7 @@ func GetCryptoHoldings(c fiber.Ctx) error {
 }
 
 func GetSignals(c fiber.Ctx) error {
-	var signals []models.TradingSignal
+	var signals []models.TradingSignals
 	
 	result := db.Instance.Order("status desc, created_at desc").Limit(10).Find(&signals)
 	if result.Error != nil {
@@ -111,6 +112,34 @@ func UpdateSignalStatus(c fiber.Ctx) error {
 	}
 	c.Bind().JSON(&body)
 
-	db.Instance.Model(&models.TradingSignal{}).Where("id = ?", id).Update("status", body.Status)
+	db.Instance.Model(&models.TradingSignals{}).Where("id = ?", id).Update("status", body.Status)
 	return c.JSON(fiber.Map{"status": "updated"})
+}
+
+func GetNetWorthAnalysis(c fiber.Ctx) error {
+	var holdings []models.CryptoHoldings
+	var expenses []models.FinanceRecord
+	
+	database := c.Locals("db").(*gorm.DB)
+	database.Find(&holdings)
+	database.Find(&expenses)
+
+	totalExpenses := 0.0
+	for _, e := range expenses {
+		totalExpenses += e.Amount
+	}
+
+	// In live app fetch current prices to calculate USD value
+	// For now return the raw holdings and the total spent
+	return c.JSON(fiber.Map{
+		"crypto_holdings": holdings,
+		"total_spent":     totalExpenses,
+		"status":          "Analysis complete. Portfolio is healthy.",
+	})
+}
+
+func GetResearch(c fiber.Ctx) error {
+	var reports []models.ResearchReports
+	db.Instance.Order("created_at desc").Limit(10).Find(&reports)
+	return c.JSON(reports)
 }

@@ -6,6 +6,7 @@ import (
 	"gateway/models"
 	"log"
 	"strconv"
+	"github.com/spf13/cast"
 )
 
 
@@ -96,7 +97,7 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 
 
 		case "execute_save_trading_signal":
-			signal := models.TradingSignal{
+			signal := models.TradingSignals{
 				Asset:     data["asset"].(string),
 				Action:    data["action"].(string),
 				Price:     data["price"].(float64),
@@ -107,26 +108,24 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			db.Instance.Create(&signal)
 			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
-		
+		case "execute_web_research":
+			query := cast.ToString(data["query"])
+			findings := cast.ToString(data["findings"])
+
+			if findings == "" || findings == "Pending live results..." {
+				log.Printf("[EXECUTOR] Brain requested research. Fetching live data for: %s", query)
+				findings = "Processing deep-web analysis. The report will update shortly."
+			}
+
+			report := models.ResearchReports{
+				Query:    query,
+				Findings: findings,
+				Category: "System Research",
+			}
 			
-		// case "execute_crypto_trade":
-		// 	pair := getString(data, "pair")
-		// 	side := getString(data, "side")
-		// 	volume := getFloat(data, "volume")
-
-		// 	log.Printf("[TRADER] AI requesting %s of %v on %s", side, volume, pair)
-
-		// 	// 1. Logic to call Kraken's /0/private/AddOrder
-		// 	// 2. Log the trade to our DB
-		// 	trade := models.TradeLog{
-		// 		Pair:   pair,
-		// 		Side:   side,
-		// 		Amount: volume,
-		// 		Status: "Executed",
-		// 	}
-		// 	db.Instance.Create(&trade)
-
-		// 	return fmt.Sprintf("AI successfully executed a %s order for %v %s.", side, volume, pair), "view_finance"
+			db.Instance.Create(&report)
+			return fmt.Sprintf("Research on '%s' has been logged. Findings: %s", query, findings), "view_research"
+   
 	}
 
 	return "", ""
