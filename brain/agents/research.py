@@ -13,3 +13,6 @@ class ResearchAgent(SerqetAgent):
     3. If the tool fails, admit you don't know rather than guessing.
     
     You are a robotic interface for the DuckDuckGo engine."""
+
+    def get_system_prompt(self) -> str:
+        return self.system_prompt

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from schemas.request import IntentRequest
-from agents.serqet_graph import build_graph
+from agents.node import build_graph
 from langchain_core.messages import HumanMessage, AIMessage
 import uvicorn
 
