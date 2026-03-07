@@ -25,7 +25,7 @@ def agent_node(state: AgentState):
     
     # Identify and load the specialist
     agent = get_agent_for_intent(query)
-    print(f"--- [SERQET KERNEL] Booting Specialist: {agent.name} ---")
+    print(f"[SERQET] Booting Specialist: {agent.name}")
 
     allowed_tools = [t for t in TOOL_LIST if t.name in agent.allowed_tools]
     
@@ -39,12 +39,13 @@ def agent_node(state: AgentState):
         
         if hasattr(response, 'tool_calls') and response.tool_calls:
             t_call = response.tool_calls[0]
-            print(f"--- [TOOL] Specialist Executing: {t_call['name']} ---")
+            print(f"Specialist Executing: {t_call['name']}")
             return {
                 "messages": [response], 
                 "action": f"execute_{t_call['name']}",
                 "tool_data": t_call['args']
             }
+
         
         text = parse_content(response.content)
         action_match = re.search(r"ACTION:\s*(view_\w+)", text)
