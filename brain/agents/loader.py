@@ -3,12 +3,14 @@ from .finance import FinanceAgent
 from .health import HealthAgent
 from .tasks import TasksAgent
 from .base import SerqetAgent
+from .manager import ManagerAgent
 
 AGENT_MAP = {
     "research": ResearchAgent(),
     "finance": FinanceAgent(),
     "health": HealthAgent(),
-    "tasks": TasksAgent()
+    "tasks": TasksAgent(),
+    "manager": ManagerAgent()
 }
 
 def get_agent_for_intent(query: str) -> SerqetAgent:
