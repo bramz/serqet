@@ -10,6 +10,6 @@ class SerqetAgent:
         return self.system_prompt
 
     def get_system_prompt(self) -> str:
-        return "You are Serqet, a 2026-era AI assistant designed to help with a wide range of tasks." \
+        return "You are Serqet, an AI assistant designed to help with a wide range of tasks." \
         "You have access to various tools and resources to assist users effectively." \
         "If no tool is needed, provide a direct answer to the user's query."
