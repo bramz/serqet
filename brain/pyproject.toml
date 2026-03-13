@@ -9,6 +9,7 @@ dependencies = [
     "duckduckgo-search>=8.1.1",
     "fastapi>=0.129.0",
     "langchain>=1.2.10",
+    "langchain-chroma>=1.1.0",
     "langchain-community>=0.4.1",
     "langchain-core>=1.2.13",
     "langchain-google-genai>=4.2.0",
