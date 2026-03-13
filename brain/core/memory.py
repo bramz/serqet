@@ -17,3 +17,5 @@ class LongtermMemory:
     def recall(self, query: str, k=5):
         """Search for relevant past context."""
         return self.vector_store.similarity_search(query, k=k)
+
+memory_engine = LongtermMemory()
