@@ -10,7 +10,7 @@ export function OverviewModule({ onQuickAction }: { onQuickAction: (q: string) =
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-6xl font-black tracking-tighter text-white uppercase italic">Dashboard</h1>
-          <p className="text-zinc-500 mt-2 font-bold text-sm tracking-wide">Kernel v0.1.0 • Neural Link Synchronized</p>
+          <p className="text-zinc-500 mt-2 font-bold text-sm tracking-wide">Overview</p>
         </div>
         <div className="flex items-center gap-3 px-4 py-2 bg-zinc-900 rounded-full border border-zinc-800">
             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
