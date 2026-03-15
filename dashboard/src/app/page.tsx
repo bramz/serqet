@@ -1,23 +1,22 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { ChatInterface } from '@/components/chat/ChatInterface';
-import { useSerqet } from '@/hooks/useSerqet';
-import { GATEWAY_URL } from '@/lib/constants';
-import { Module } from '@/types';
+import { useState } from "react";
+import { ChatInterface } from "@/components/chat/ChatInterface";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { useSerqet } from "@/hooks/useSerqet";
 
 // Module Imports
-import { OverviewModule } from '@/components/modules/OverviewModule';
-import { SocialModule } from '@/components/modules/SocialModule';
-import { FinanceModule } from '@/components/modules/FinanceModule';
-import { TaskModule } from '@/components/modules/TaskModule';
-import { JobModule } from '@/components/modules/JobModule';
-import { HealthModule } from '@/components/modules/HealthModule';
-import { ResearchModule } from '@/components/modules/ResearchModule';
+import { OverviewModule } from "@/components/modules/OverviewModule";
+import { FinanceModule } from "@/components/modules/FinanceModule";
+import { SocialModule } from "@/components/modules/SocialModule";
+import { ResearchModule } from "@/components/modules/ResearchModule";
+import { JobModule } from "@/components/modules/JobModule";
+import { TaskModule } from "@/components/modules/TaskModule";
+import { HealthModule } from "@/components/modules/HealthModule";
+// import { RevenueModule } from "@/components/modules/RevenueModule";
 
 export default function Home() {
-  const [modules, setModules] = useState<Module[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   const { chatHistory, askSerqet, loading } = useSerqet((action) => {
@@ -26,23 +25,36 @@ export default function Home() {
     }
   });
 
-  useEffect(() => {
-    fetch(`${GATEWAY_URL}/api/v1/modules`).then(res => res.json()).then(setModules);
-  }, []);
-
   return (
-    <div className="flex h-screen bg-black text-white">
-      <Sidebar modules={modules} activeTab={activeTab} onTabChange={setActiveTab} />
+    <div 
+      className="flex h-screen bg-black text-white overflow-hidden"
+      style={{ '--sidebar-width': isSidebarCollapsed ? '64px' : '260px' } as any}
+    >
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        setIsCollapsed={setIsSidebarCollapsed} 
+      />
       
-      <main className="flex-1 flex flex-col relative overflow-hidden">
-        <div className="flex-1 p-8 overflow-y-auto">
-          {activeTab === "overview" && <OverviewModule modules={modules} />}
-          {activeTab === "social" && <SocialModule />}
+      <main className="flex-1 relative flex flex-col min-w-0">
+        <div className="flex-1 p-8 overflow-y-auto scrollbar-hide pb-32">
+          
+          {activeTab === "overview" && <OverviewModule onQuickAction={askSerqet} />}
           {activeTab === "finance" && <FinanceModule />}
-          {activeTab === "tasks" && <TaskModule />}
-          {activeTab === "jobs" && <JobModule />}
-          {activeTab === "health" && <HealthModule />}
+          {activeTab === "social" && <SocialModule />}
           {activeTab === "research" && <ResearchModule />}
+          {activeTab === "job" && <JobModule />}
+          {activeTab === "task" && <TaskModule />}
+          {activeTab === "health" && <HealthModule />}
+          {/* {activeTab === "revenue" && <RevenueModule />} */}
+
+          {activeTab !== "overview" && (
+            <button 
+              onClick={() => setActiveTab("overview")}
+              className="fixed top-8 right-8 px-5 py-2 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-full text-[10px] font-black tracking-widest text-zinc-400 hover:text-white transition-all z-40"
+            >
+              ← RETURN TO DASHBOARD
+            </button>
+          )}
         </div>
 
         <ChatInterface 
