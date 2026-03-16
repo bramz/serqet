@@ -1,31 +1,62 @@
-from fastapi import FastAPI
+import uvicorn
+import logging
+from fastapi import FastAPI, HTTPException
 from schemas.request import IntentRequest
 from agents.node import build_graph
 from langchain_core.messages import HumanMessage, AIMessage
-import uvicorn
 
-app = FastAPI()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("serqet-brain")
+
+app = FastAPI(title="Serqet OS Brain", version="1.0.0")
+
 serqet_brain = build_graph()
 
 @app.post("/brain/v1/process_intent")
 async def process_intent(req: IntentRequest):
-    # Prepare history
-    messages = []
-    for m in req.history:
-        msg_type = HumanMessage if m.role == "user" else AIMessage
-        messages.append(msg_type(content=m.text))
-    messages.append(HumanMessage(content=req.query))
-    
-    result = serqet_brain.invoke({"messages": messages, "action": None, "tool_data": None})
-    
-    print(result)
-    last_msg = result["messages"][-1]
-    return {
-        "status": "success",
-        "message": last_msg.content if last_msg.content else "Action processing...",
-        "action": result["action"],
-        "data": result.get("tool_data")
-    }
+    try:
+        messages = []
+        for m in req.history:
+            if m.role == "user":
+                messages.append(HumanMessage(content=m.text))
+            else:
+                messages.append(AIMessage(content=m.text))
+        
+        messages.append(HumanMessage(content=req.query))
+        
+        initial_state = {
+            "messages": messages,
+            "session_id": req.session_id,
+            "action": None,
+            "tool_data": None
+        }
+        
+        logger.info(f"Processing Session: {req.session_id}")
+        
+        result = serqet_brain.invoke(initial_state)
+        last_msg = result["messages"][-1]
+        display_text = last_msg.content if last_msg.content else "Executing requested module..."
+
+        return {
+            "status": "success",
+            "message": display_text,
+            "action": result.get("action"),
+            "data": result.get("tool_data"),
+            "session_id": req.session_id
+        }
+
+    except Exception as e:
+        logger.error(f"!!! [BRAIN PANIC] !!!: {str(e)}")
+        return {
+            "status": "error",
+            "message": "I've encountered a neural link error. Attempting to reset context...",
+            "action": None,
+            "data": None
+        }
+
+@app.get("/health")
+async def health():
+    return {"status": "online", "engine": "gemini-3-flash-preview"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
