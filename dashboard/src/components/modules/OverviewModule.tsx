@@ -38,7 +38,7 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
           <h1 className="text-3xl font-black tracking-tighter text-white italic uppercase leading-none">
             Dashboard<span className="text-primary"></span>
           </h1>
-          <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.3em] mt-1">Control/Kernel v1.0</p>
+          <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.3em] mt-1">Controller</p>
         </div>
         <DiagBox icon={<Cpu size={14}/>} label="CPU" val={data.system_stats.cpu} color="text-emerald-500" />
         <DiagBox icon={<Server size={14}/>} label="RAM" val={data.system_stats.memory_usage} color="text-purple-500" />
