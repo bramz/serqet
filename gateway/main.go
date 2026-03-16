@@ -26,6 +26,15 @@ func main() {
 	app.Use(cors.New())
 
 	v1 := app.Group("/api/v1")
+
+	// sessions
+	v1.Get("/sessions", api.GetSessions)
+	v1.Post("/sessions", api.CreateSession)
+	v1.Patch("/sessions/:session_id", api.UpdateSessionTitle)
+	v1.Delete("/sessions/:session_id", api.DeleteSession)
+	v1.Get("/history/:session_id", api.GetSessionHistory)
+
+	
 	v1.Get("/overview", api.GetOverviewSnapshot)
 	v1.Post("/intent", api.HandleIntent)
 	v1.Get("/modules", api.GetModules) 

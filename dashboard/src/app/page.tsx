@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { useState, useEffect } from "react";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { useSerqet } from "@/hooks/useSerqet";
 
 // Modules
@@ -13,12 +13,30 @@ import { ResearchModule } from "@/components/modules/ResearchModule";
 import { JobModule } from "@/components/modules/JobModule";
 import { TaskModule } from "@/components/modules/TaskModule";
 import { HealthModule } from "@/components/modules/HealthModule";
+// import { RevenueModule } from "@/components/modules/RevenueModule";
 
 export default function Home() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  
+  // SESSION STATE: Initialize from localStorage to persist across refreshes
+  const [activeSessionId, setActiveSessionId] = useState<string>("default");
 
-  const { chatHistory, askSerqet, loading } = useSerqet((action) => {
+  useEffect(() => {
+    const savedSession = localStorage.getItem("serqet_active_session");
+    if (savedSession) {
+      setActiveSessionId(savedSession);
+    }
+  }, []);
+
+  // Update localStorage whenever the session changes
+  const handleSessionChange = (id: string) => {
+    setActiveSessionId(id);
+    localStorage.setItem("serqet_active_session", id);
+  };
+
+  // Pass activeSessionId to the hook so it can fetch the correct history
+  const { chatHistory, askSerqet, loading } = useSerqet(activeSessionId, (action) => {
     if (action.startsWith("view_")) {
       setActiveTab(action.replace("view_", ""));
     }
@@ -29,7 +47,12 @@ export default function Home() {
       className="flex h-screen bg-black text-white overflow-hidden"
       style={{ '--sidebar-width': isSidebarCollapsed ? '72px' : '280px' } as React.CSSProperties}
     >
-      <Sidebar isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        setIsCollapsed={setIsSidebarCollapsed} 
+        activeSessionId={activeSessionId}
+        onSessionSelect={handleSessionChange}
+      />
       
       <main className="flex-1 relative flex flex-col min-w-0">
         <div className="flex-1 p-6 overflow-y-auto scrollbar-hide pb-32">
