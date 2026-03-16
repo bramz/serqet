@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from schemas.request import IntentRequest
 from agents.node import build_graph
 from langchain_core.messages import HumanMessage, AIMessage
+from core.memory import memory_engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("serqet-brain")
@@ -57,6 +58,11 @@ async def process_intent(req: IntentRequest):
 @app.get("/health")
 async def health():
     return {"status": "online", "engine": "gemini-3-flash-preview"}
+
+@app.get("/brain/v1/memory/stats")
+async def get_memory_stats():
+    count = memory_engine.get_count()
+    return {"vector_count": count}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
