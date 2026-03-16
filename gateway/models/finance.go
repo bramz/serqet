@@ -25,3 +25,10 @@ type TradingSignals struct {
 	Confidence float64 `json:"confidence"` // 0.0 to 1.0
 	Status    string  `json:"status"`     // "Pending", "Executed", "Dismissed"
 }
+
+type RevenueCampaign struct {
+	Base
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	TotalEarned float64 `json:"total_earned"`
+}

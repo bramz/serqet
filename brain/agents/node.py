@@ -29,31 +29,34 @@ TOOL_LIST = list(TOOL_MAP.values())
 
 def agent_node(state: AgentState):
     query = state["messages"][-1].content
+    session_id = state.get("session_id", "default")
     
-    # 1. LIFETIME MEMORY HOOK (Ready for ChromaDB integration)
-    context = memory_engine.recall(query) 
+    context = memory_engine.recall(query, session_id=session_id) 
     
-    # 2. BOOT SPECIALIST
     agent = get_agent_for_intent(query)
-    print(f"--- [SERQET KERNEL] Specialist: {agent.name} ---")
+    print(f"Specialist: {agent.name}, Session ID: {session_id}")
 
-    # 3. SANDBOX TOOLS
     allowed_tools = [t for t in TOOL_LIST if t.name in agent.allowed_tools]
     llm = get_llm("gemini")
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm
     
     try:
-        # 4. EXECUTION ATTEMPT
-        sys_msg = SystemMessage(content=agent.get_system_prompt())
-        response = llm_with_tools.invoke([sys_msg] + state["messages"])
+        sys_prompt = f"{agent.get_system_prompt()}\n\nSESSION CONTEXT:\n{context or 'None'}"
+        response = llm_with_tools.invoke([SystemMessage(content=sys_prompt)] + state["messages"])
         
-        # 5. TOOL EXECUTION BRANCH
+        if response.content:
+            memory_engine.archive(
+                text=f"User: {query} | Serqet: {response.content}",
+                metadata={"session_id": session_id, "agent": agent.name}
+            )
+
+        
         if hasattr(response, 'tool_calls') and response.tool_calls:
             t_call = response.tool_calls[0]
             tool_name = t_call['name']
             tool_args = t_call['args']
             
-            print(f"--- [KERNEL] Executing {tool_name} in Python... ---")
+            print(f"Executing {tool_name} in Python...")
             
             # Find the function and run it
             target_func = TOOL_MAP.get(tool_name)
@@ -62,27 +65,23 @@ def agent_node(state: AgentState):
                 
                 # Check for Tool Failures (e.g., DDG returning nothing)
                 if tool_output.get("findings") == "NOT_FOUND" or not tool_output:
-                    print(f"--- [KERNEL] Tool {tool_name} failed. Running AI Fallback... ---")
+                    print(f"Tool {tool_name} failed. Running AI Fallback...")
                     return trigger_ai_fallback(query, state, tool_name)
 
-                # SUCCESS: Hand off results to Go Gateway
                 return {
                     "messages": [response], 
                     "action": f"execute_{tool_name}",
                     "tool_data": tool_output
                 }
         
-        # 6. CONVERSATION & NAVIGATION BRANCH
         text = parse_content(response.content)
         
-        # Manual Override for Research (Preventing Hallucinations)
         if agent.name == "research" and "ACTION: view_research" not in text:
-            print("--- [KERNEL] Research logic skipped tool. Forcing Fallback. ---")
+            print("Research logic skipped tool. Forcing Fallback.")
             return trigger_ai_fallback(query, state, "research")
 
         clean_text, action = extract_action_and_clean(text)
         
-        # If the AI gave a totally empty response, don't return nothing
         if not clean_text and not action:
             return trigger_ai_fallback(query, state)
 
@@ -92,7 +91,7 @@ def agent_node(state: AgentState):
         }
 
     except Exception as e:
-        print(f"!!! KERNEL PANIC: {e} !!!")
+        print(f"!!! [BRAIN PANIC]: {e} !!!")
         return trigger_ai_fallback(query, state, "system_error")
 
 def trigger_ai_fallback(query: str, state: AgentState, context: str = "general"):
@@ -111,7 +110,6 @@ def trigger_ai_fallback(query: str, state: AgentState, context: str = "general")
     
     fallback_res = llm.invoke([SystemMessage(content=fallback_prompt)] + state["messages"])
     
-    # If the user wanted research, make sure it saves to the DB even on fallback
     action = "execute_web_research" if context == "research" or "research" in query.lower() else None
     tool_data = {"query": query, "findings": fallback_res.content} if action else None
 

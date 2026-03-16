@@ -26,6 +26,7 @@ func main() {
 	app.Use(cors.New())
 
 	v1 := app.Group("/api/v1")
+	v1.Get("/overview", api.GetOverviewSnapshot)
 	v1.Post("/intent", api.HandleIntent)
 	v1.Get("/modules", api.GetModules) 
 	v1.Get("/history", api.GetHistory)
