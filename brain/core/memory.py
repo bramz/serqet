@@ -47,4 +47,14 @@ class LongtermMemory:
             print(f"[MEMORY ERROR] Recall failed: {e}")
             return ""
 
+    def get_count(self) -> int:
+        """Returns the total number of vectors stored in the collection."""
+        if not self.vector_store:
+            return 0
+        try:
+            return self.vector_store._collection.count()
+        except Exception as e:
+            print(f"--- [MEMORY COUNT ERROR]: {e} ---")
+            return 0
+
 memory_engine = LongtermMemory()

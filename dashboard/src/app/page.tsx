@@ -53,7 +53,7 @@ export default function Home() {
               onClick={() => setActiveTab("overview")}
               className="fixed top-6 right-6 px-4 py-2 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-full text-[10px] font-black tracking-widest text-zinc-500 hover:text-primary transition-all z-40"
             >
-              ← RETURN TO ROOT
+              ← RETURN TO DASHBOARD
             </button>
           )}
         </div>

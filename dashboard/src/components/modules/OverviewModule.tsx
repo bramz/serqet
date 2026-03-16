@@ -7,7 +7,8 @@ import {
   Briefcase, ListTodo, Database, Shield, Search, 
   Wallet, Terminal, BarChart3, Binary, 
   ShieldCheck, ChevronRight, HardDrive, Server, Rocket,
-  Cog, History, Flame, MessageSquare
+  Cog, History, Flame, MessageSquare,
+  TimerIcon
 } from "lucide-react";
 import { GATEWAY_URL } from '@/lib/constants';
 
@@ -42,8 +43,9 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
         </div>
         <DiagBox icon={<Cpu size={14}/>} label="CPU" val={data.system_stats.cpu} color="text-emerald-500" />
         <DiagBox icon={<Server size={14}/>} label="RAM" val={data.system_stats.memory_usage} color="text-purple-500" />
-        <DiagBox icon={<ShieldCheck size={14}/>} label="Neural" val={data.system_stats.neural_latency} color="text-cyan-500" />
-        <DiagBox icon={<Database size={14}/>} label="Memory" val="1.4k Vec" color="text-amber-500" />
+        <DiagBox icon={<TimerIcon size={14}/>} label="Uptime" val={data.system_stats.uptime} color="text-cyan-500" />
+        {/* <DiagBox icon={<ShieldCheck size={14}/>} label="Neural" val={data.system_stats.neural_latency} color="text-cyan-500" /> */}
+        <DiagBox icon={<Database size={14}/>} label="Memory" val={data.system_stats.vector_count} color="text-amber-500" />
       </header>
 
       {/* COMPACT COMMAND MATRIX */}
@@ -100,10 +102,10 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
            </div>
         </LedgerCard>
 
-        <LedgerCard title="Kernel Logs" icon={<Binary size={14}/>}>
+        <LedgerCard title="Brain Logs" icon={<Binary size={14}/>}>
            <div className="space-y-3 font-mono text-[10px] text-zinc-500">
              <div className="flex gap-2"><span className="text-emerald-500 font-bold shrink-0">[OK]</span> <span>Kraken feed live</span></div>
-             <div className="flex gap-2"><span className="text-primary font-bold shrink-0">[AI]</span> <span>Chroma Memory indexed</span></div>
+             <div className="flex gap-2"><span className="text-white font-bold shrink-0">[AI]</span> <span>Chroma Memory indexed</span></div>
              <div className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">[IO]</span> <span>Research Report v2 saved</span></div>
            </div>
         </LedgerCard>
