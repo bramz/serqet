@@ -126,7 +126,26 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			db.Instance.Create(&report)
 			return fmt.Sprintf("Research on '%s' has been logged. Findings: %s", query, findings), "view_research"
    
-	}
+
+		case "execute_launch_campaign":
+			campaign := models.RevenueCampaign{
+				Name: data["name"].(string),
+				Strategy: data["strategy"].(string),
+				Platform: data["platform"].(string),
+				Budget: data["budget"].(float64),
+				Status: "Active",
+			}
+
+			
+			if err := db.Instance.Create(&campaign).Error; err != nil {
+				return "Failed to initialize campaign registry.", ""
+			}
+
+			// Log the event for the Sidebar/Overview logs
+			EmitEvent("REVENUE", "Launched campaign: " + campaign.Name, "SUCCESS")
+			
+			return fmt.Sprintf("Revenue agent successfully initialized the '%s' campaign. Scaling protocols active.", campaign.Name), "view_revenue"
+		}
 
 	return "", ""
 }
