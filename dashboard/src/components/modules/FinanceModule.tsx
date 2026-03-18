@@ -76,9 +76,9 @@ function VentureHub({ onQuickAction }: { onQuickAction?: (q: string) => void }) 
         <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Revenue Campaigns</h3>
         <button 
           onClick={() => onQuickAction?.("Scout for a new automated revenue niche and propose a venture plan.")}
-          className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-lg text-primary text-[10px] font-black uppercase hover:bg-primary hover:text-white transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-lg text-white text-[10px] font-white uppercase hover:bg-primary hover:text-emerald-500 transition-all"
         >
-          <Target size={12} /> Scout New Niche
+          <Target size={12} className="text-red-500" /> Scout New Niche
         </button>
       </div>
 

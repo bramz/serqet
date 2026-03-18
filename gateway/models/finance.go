@@ -6,6 +6,7 @@ type FinanceRecord struct {
 	Amount      float64 `json:"amount"`
 	Category    string  `json:"category"`
 	Description string  `json:"description"`
+	Type        string  `json:"type"` // "Income" or "Expense"
 }
 
 type CryptoHoldings struct {
@@ -34,4 +35,15 @@ type RevenueCampaign struct {
 	Strategy    string  `json:"strategy"`    // AI's internal logic
 	Budget      float64 `json:"budget"`      // Initial capital
 	TotalEarned float64 `json:"total_earned"` // Total ROI
+}
+
+type VentureCampaign struct {
+	gorm.Model
+	Name            string  `json:"name"`
+	Status          string  `json:"status"`           // "Incubating", "Active", "Scaling"
+	Category        string  `json:"category"`         // "Affiliate", "SaaS", "Content"
+	StrategySummary string  `json:"strategy_summary"`
+	ProjectedROI    string  `json:"projected_roi"`
+	Platform        string  `json:"platform"`
+	RevenueEarned   float64 `json:"revenue_earned"`
 }

@@ -4,17 +4,11 @@ import (
 	"fmt"
 	"gateway/db"
 	"gateway/models"
+	"gateway/utils"
 	"log"
 	"strconv"
 )
 
-func safeString(data map[string]interface{}, key string) string {
-	val, ok := data[key]
-	if !ok || val == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", val)
-}
 
 func ExecuteToolCall(action string, data map[string]interface{}) (string, string) {
 	log.Printf("Executing action: %s with data: %+v\n", action, data)
@@ -116,8 +110,8 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 
    
 		case "execute_web_research":
-			q := safeString(data, "query")
-			f := safeString(data, "findings")
+			q := utils.SafeString(data, "query")
+			f := utils.SafeString(data, "findings")
 
 			log.Printf("[DEBUG] Research Data Recv -> Query: %s | Findings Len: %d", q, len(f))
 
@@ -156,6 +150,30 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			EmitEvent("REVENUE", "Launched campaign: " + campaign.Name, "SUCCESS")
 			
 			return fmt.Sprintf("Revenue agent successfully initialized the '%s' campaign. Scaling protocols active.", campaign.Name), "view_revenue"
+
+		case "execute_db_launch_venture":
+			venture := models.VentureCampaign{
+				Name:            utils.SafeString(data, "name"),
+				Category:        utils.SafeString(data, "category"),
+				StrategySummary: utils.SafeString(data, "strategy"),
+				ProjectedROI:    utils.SafeString(data, "projected_roi"),
+				Platform:        utils.SafeString(data, "platform"),
+				Status:          "Incubating",
+			}
+			db.Instance.Create(&venture)
+			EmitEvent("REVENUE", "New Venture Incubated: "+venture.Name, "SUCCESS")
+			// Note: We return view_finance now instead of view_revenue
+			return fmt.Sprintf("Venture '%s' initialized in the Finance Hub.", venture.Name), "view_finance"
+
+		case "execute_record_income":
+			income := models.FinanceRecord{
+				Amount:      utils.ParseNumeric(data["amount"]),
+				Category:    utils.SafeString(data, "category"),
+				Description: utils.SafeString(data, "description"),
+				Type:        "income",
+			}
+			db.Instance.Create(&income)
+			return fmt.Sprintf("Cash inflow of $%.2f recorded.", income.Amount), "view_finance"
 		}
 
 	return "", ""

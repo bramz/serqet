@@ -29,6 +29,8 @@ func Connect() error {
 		&models.ResearchReports{},
 		&models.SystemEvent{},
 		&models.RevenueCampaign{},
+		&models.VentureCampaign{},
+	
 	)
 	Instance = db
 	return nil

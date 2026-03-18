@@ -44,7 +44,9 @@ func main() {
     v1.Get("/jobs", api.GetJobs)
 
 	// Finance
+	
     v1.Get("/finance/summary", api.GetFinanceSummary)
+	v1.Get("/finance/ventures", api.GetVentures)
 	v1.Get("/finance/holdings", api.GetCryptoHoldings)
 	v1.Get("/finance/sync", api.SyncHoldings)
 	v1.Get("/finance/signals", api.GetSignals)

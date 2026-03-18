@@ -64,7 +64,7 @@ export default function Home() {
             />
           )}
 
-          {activeTab === "finance" && <FinanceModule />}
+          {activeTab === "finance" && <FinanceModule onQuickAction={askSerqet}/>}
           {activeTab === "social" && <SocialModule />}
           {activeTab === "research" && <ResearchModule />}
           {activeTab === "job" && <JobModule />}

@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
+	"gateway/utils"
 )
 
 type Candle struct {
@@ -24,29 +24,6 @@ type Candle struct {
 	Low    float64 `json:"low"`
 	Close  float64 `json:"close"`
 	Volume float64 `json:"volume"`
-}
-
-// todo: add as util
-func parseNumeric(val interface{}) float64 {
-	if val == nil {
-		return 0
-	}
-	switch v := val.(type) {
-	case float64:
-		return v
-	case int64:
-		return float64(v)
-	case int:
-		return float64(v)
-	case string:
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return 0
-		}
-		return f
-	default:
-		return 0
-	}
 }
 
 func getKrakenSignature(urlPath string, values url.Values, secret string) (string, error) {
@@ -166,12 +143,12 @@ func FetchMarketCandles(pair string) ([]Candle, error) {
 			log.Printf("Raw candle data: %v", c)
 			// Kraken OHLC Format: [time, open, high, low, close, vwap, volume, count]
 			candles = append(candles, Candle{
-				Time:  int64(parseNumeric(c[0])),
-				Open:  parseNumeric(c[1]),
-				High:  parseNumeric(c[2]),
-				Low:   parseNumeric(c[3]),
-				Close: parseNumeric(c[4]),
-				Volume: parseNumeric(c[6]),
+				Time:  int64(utils.ParseNumeric(c[0])),
+				Open:  utils.ParseNumeric(c[1]),
+				High:  utils.ParseNumeric(c[2]),
+				Low:   utils.ParseNumeric(c[3]),
+				Close: utils.ParseNumeric(c[4]),
+				Volume: utils.ParseNumeric(c[6]),
 			})
 		}
 	}

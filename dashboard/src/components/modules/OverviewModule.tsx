@@ -26,7 +26,7 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
   if (!data) return (
     <div className="flex items-center justify-center h-full">
       <div className="font-black tracking-[0.4em] text-primary animate-pulse uppercase text-xs italic">
-        Syncing OS Snapshot...
+        Syncing Snapshot...
       </div>
     </div>
   );
