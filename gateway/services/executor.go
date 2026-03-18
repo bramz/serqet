@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"gateway/db"
 	"gateway/models"
+	"gateway/utils"
 	"log"
 	"strconv"
-	"github.com/spf13/cast"
 )
 
 
@@ -108,25 +108,73 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			db.Instance.Create(&signal)
 			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
+   
 		case "execute_web_research":
-			query := cast.ToString(data["query"])
-			findings := cast.ToString(data["findings"])
+			q := utils.SafeString(data, "query")
+			f := utils.SafeString(data, "findings")
 
-			if findings == "" || findings == "Pending live results..." {
-				log.Printf("[EXECUTOR] Brain requested research. Fetching live data for: %s", query)
-				findings = "Processing deep-web analysis. The report will update shortly."
+			log.Printf("[DEBUG] Research Data Recv -> Query: %s | Findings Len: %d", q, len(f))
+
+			if f == "" {
+				f = "Analysis completed, but no usable data was synthesized by the agent."
 			}
 
 			report := models.ResearchReports{
-				Query:    query,
-				Findings: findings,
+				Query:    q,
+				Findings: f,
 				Category: "System Research",
 			}
 			
-			db.Instance.Create(&report)
-			return fmt.Sprintf("Research on '%s' has been logged. Findings: %s", query, findings), "view_research"
-   
-	}
+			if err := db.Instance.Create(&report).Error; err != nil {
+				log.Printf("[DATABASE ERROR]: %v", err)
+				return "Internal DB Error", ""
+			}
+
+			return fmt.Sprintf("Intelligence Report for '%s' has been synthesized and archived.", q), "view_research"
+
+		case "execute_launch_campaign":
+			campaign := models.RevenueCampaign{
+				Name: data["name"].(string),
+				Strategy: data["strategy"].(string),
+				Platform: data["platform"].(string),
+				Budget: data["budget"].(float64),
+				Status: "Active",
+			}
+
+			
+			if err := db.Instance.Create(&campaign).Error; err != nil {
+				return "Failed to initialize campaign registry.", ""
+			}
+
+			// Log the event for the Sidebar/Overview logs
+			EmitEvent("REVENUE", "Launched campaign: " + campaign.Name, "SUCCESS")
+			
+			return fmt.Sprintf("Revenue agent successfully initialized the '%s' campaign. Scaling protocols active.", campaign.Name), "view_revenue"
+
+		case "execute_db_launch_venture":
+			venture := models.VentureCampaign{
+				Name:            utils.SafeString(data, "name"),
+				Category:        utils.SafeString(data, "category"),
+				StrategySummary: utils.SafeString(data, "strategy"),
+				ProjectedROI:    utils.SafeString(data, "projected_roi"),
+				Platform:        utils.SafeString(data, "platform"),
+				Status:          "Incubating",
+			}
+			db.Instance.Create(&venture)
+			EmitEvent("REVENUE", "New Venture Incubated: "+venture.Name, "SUCCESS")
+			// Note: We return view_finance now instead of view_revenue
+			return fmt.Sprintf("Venture '%s' initialized in the Finance Hub.", venture.Name), "view_finance"
+
+		case "execute_record_income":
+			income := models.FinanceRecord{
+				Amount:      utils.ParseNumeric(data["amount"]),
+				Category:    utils.SafeString(data, "category"),
+				Description: utils.SafeString(data, "description"),
+				Type:        "income",
+			}
+			db.Instance.Create(&income)
+			return fmt.Sprintf("Cash inflow of $%.2f recorded.", income.Amount), "view_finance"
+		}
 
 	return "", ""
 }

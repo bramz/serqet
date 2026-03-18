@@ -4,13 +4,15 @@ from .health import HealthAgent
 from .tasks import TasksAgent
 from .base import SerqetAgent
 from .manager import ManagerAgent
+from .revenue import RevenueAgent
 
 AGENT_MAP = {
     "research": ResearchAgent(),
     "finance": FinanceAgent(),
     "health": HealthAgent(),
     "tasks": TasksAgent(),
-    "manager": ManagerAgent()
+    "manager": ManagerAgent(),
+    "revenue": RevenueAgent()
 }
 
 def get_agent_for_intent(query: str) -> SerqetAgent:
@@ -23,5 +25,7 @@ def get_agent_for_intent(query: str) -> SerqetAgent:
         return AGENT_MAP["health"]
     if any(w in query for w in ["task", "todo", "plan"]):
         return AGENT_MAP["tasks"]
+    if any(w in query for w in ["money", "revenue", "profit", "arbitrage", "earn"]):
+        return RevenueAgent()
     
     return SerqetAgent()

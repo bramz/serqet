@@ -58,6 +58,32 @@ def agent_node(state: AgentState):
             
             print(f"Executing {tool_name} in Python...")
             
+            if tool_name == "web_research":
+                raw_results = web_research.invoke(t_call['args'])
+                
+                synthesis_prompt = f"""
+                QUERY: {t_call['args']['query']}
+                RAW DATA: {raw_results['findings']}
+                TASK: Rewrite this into a professional Markdown Intelligence Report.
+                Return ONLY the markdown.
+                """
+                
+                # 1. Get the response from Gemini
+                synthesis_res = get_llm("gemini").invoke(synthesis_prompt)
+                
+                # 2. THE FIX: Extract the actual text string from the response object
+                # This removes the {'type': 'text', 'text': ...} wrapper
+                from utils.parser import parse_content
+                clean_markdown = parse_content(synthesis_res.content)
+
+                return {
+                    "messages": [response], 
+                    "action": "execute_web_research",
+                    "tool_data": {
+                        "query": t_call['args']['query'],
+                        "findings": clean_markdown # This is now a clean string
+                    }
+                }
             # Find the function and run it
             target_func = TOOL_MAP.get(tool_name)
             if target_func:

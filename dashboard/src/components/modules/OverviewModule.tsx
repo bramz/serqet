@@ -8,7 +8,8 @@ import {
   Wallet, Terminal, BarChart3, Binary, 
   ShieldCheck, ChevronRight, HardDrive, Server, Rocket,
   Cog, History, Flame, MessageSquare,
-  TimerIcon
+  TimerIcon,
+  Linkedin
 } from "lucide-react";
 import { GATEWAY_URL } from '@/lib/constants';
 
@@ -25,7 +26,7 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
   if (!data) return (
     <div className="flex items-center justify-center h-full">
       <div className="font-black tracking-[0.4em] text-primary animate-pulse uppercase text-xs italic">
-        Syncing OS Snapshot...
+        Syncing Snapshot...
       </div>
     </div>
   );
@@ -67,7 +68,7 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
 
       {/* DATA LEDGER GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <LedgerCard title="Finance" icon={<DollarSign size={14}/>} onOpen={() => onNavigate("finance")}>
+        <LedgerCard title="Finance" icon={<DollarSign size={14} className="text-white"/>} onOpen={() => onNavigate("finance")}>
            <table className="w-full">
              <tbody className="text-xs">
                {data.holdings.map((h: any) => (
@@ -80,7 +81,7 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
            </table>
         </LedgerCard>
 
-        <LedgerCard title="Intelligence" icon={<Globe size={14}/>} onOpen={() => onNavigate("research")}>
+        <LedgerCard title="Intelligence" icon={<Globe size={14} className="text-white"/>} onOpen={() => onNavigate("research")}>
            <div className="space-y-4">
              {data.intelligence.map((i: any) => (
                <div key={i.ID} className="border-l-2 border-zinc-800 hover:border-primary pl-3 py-1 transition-all">
@@ -91,7 +92,7 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
            </div>
         </LedgerCard>
 
-        <LedgerCard title="Exec Queue" icon={<ListTodo size={14}/>} onOpen={() => onNavigate("task")}>
+        <LedgerCard title="Task Queue" icon={<ListTodo size={14} className="text-white"/>} onOpen={() => onNavigate("task")}>
            <div className="space-y-2">
              {data.tasks.map((t: any) => (
                <div key={t.ID} className="bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-800/50 flex justify-between items-center">
@@ -102,7 +103,18 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
            </div>
         </LedgerCard>
 
-        <LedgerCard title="Brain Logs" icon={<Binary size={14}/>}>
+        <LedgerCard title="Social Hub" icon={<Linkedin size={14} className="text-white"/>} onOpen={() => onNavigate("social")}>
+          <div className="space-y-2">
+            {data.social.map((s: any) => (
+              <div key={s.ID} className="bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-800/50 flex justify-between items-center">
+                <span className="text-xs font-bold text-zinc-400 truncate pr-2">{s.content}</span>
+                <span className="text-[9px] font-black text-amber-500 px-2 py-0.5 bg-primary/10 rounded uppercase">{s.platform}</span>
+              </div>
+            ))}
+          </div>
+        </LedgerCard>
+
+        <LedgerCard title="Brain Logs" icon={<Binary size={14} className="text-white"/>}>
            <div className="space-y-3 font-mono text-[10px] text-zinc-500">
              <div className="flex gap-2"><span className="text-emerald-500 font-bold shrink-0">[OK]</span> <span>Kraken feed live</span></div>
              <div className="flex gap-2"><span className="text-white font-bold shrink-0">[AI]</span> <span>Chroma Memory indexed</span></div>
@@ -110,9 +122,9 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
            </div>
         </LedgerCard>
 
-        <LedgerCard title="Revenue Hub" icon={<Zap size={14}/>} onOpen={() => onNavigate("revenue")}>
+        <LedgerCard title="Business Hub" icon={<Zap size={14} className="text-white"/>} onOpen={() => onNavigate("revenue")}>
            <div className="flex flex-col items-center justify-center h-full py-4">
-             <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Total OS Earned</span>
+             <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Total Earned</span>
              <h2 className="text-4xl font-black italic text-white tracking-tighter">${data.total_revenue.toLocaleString()}</h2>
              <div className="mt-4 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
                 <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Growth: 12%</span>
