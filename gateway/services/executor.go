@@ -6,9 +6,15 @@ import (
 	"gateway/models"
 	"log"
 	"strconv"
-	"github.com/spf13/cast"
 )
 
+func safeString(data map[string]interface{}, key string) string {
+	val, ok := data[key]
+	if !ok || val == nil {
+		return ""
+	}
+	return fmt.Sprintf("%v", val)
+}
 
 func ExecuteToolCall(action string, data map[string]interface{}) (string, string) {
 	log.Printf("Executing action: %s with data: %+v\n", action, data)
@@ -108,24 +114,29 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			db.Instance.Create(&signal)
 			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
+   
 		case "execute_web_research":
-			query := cast.ToString(data["query"])
-			findings := cast.ToString(data["findings"])
+			q := safeString(data, "query")
+			f := safeString(data, "findings")
 
-			if findings == "" || findings == "Pending live results..." {
-				log.Printf("[EXECUTOR] Brain requested research. Fetching live data for: %s", query)
-				findings = "Processing deep-web analysis. The report will update shortly."
+			log.Printf("[DEBUG] Research Data Recv -> Query: %s | Findings Len: %d", q, len(f))
+
+			if f == "" {
+				f = "Analysis completed, but no usable data was synthesized by the agent."
 			}
 
 			report := models.ResearchReports{
-				Query:    query,
-				Findings: findings,
+				Query:    q,
+				Findings: f,
 				Category: "System Research",
 			}
 			
-			db.Instance.Create(&report)
-			return fmt.Sprintf("Research on '%s' has been logged. Findings: %s", query, findings), "view_research"
-   
+			if err := db.Instance.Create(&report).Error; err != nil {
+				log.Printf("[DATABASE ERROR]: %v", err)
+				return "Internal DB Error", ""
+			}
+
+			return fmt.Sprintf("Intelligence Report for '%s' has been synthesized and archived.", q), "view_research"
 
 		case "execute_launch_campaign":
 			campaign := models.RevenueCampaign{

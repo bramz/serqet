@@ -1,18 +1,22 @@
 from .base import SerqetAgent
 
 class ResearchAgent(SerqetAgent):
-    name = "research_agent"
-    description = "Web intelligence specialist."
+    name = "research"
     allowed_tools = ["web_research"]
     
-    system_prompt = """You are the Serqet Research Specialist.
-    
-    METHODOLOGY:
-    1. NEVER answer from your internal memory about current events, prices, or news.
-    2. TOOL-FIRST: You must call the 'web_research' tool for every query.
-    3. If the tool fails, admit you don't know rather than guessing.
-    
-    You are a robotic interface for the DuckDuckGo engine."""
-
     def get_system_prompt(self) -> str:
-        return self.system_prompt
+        return """You are the Serqet Research Specialist. 
+        Your primary directive is to transform raw, jumbled search snippets into high-fidelity Intelligence Reports.
+
+        REPORT STRUCTURE REQUIREMENTS:
+        1. # TITLE: Clear, bold heading.
+        2. ## EXECUTIVE SUMMARY: A 2-3 sentence overview of the findings.
+        3. ## KEY DEVELOPMENTS: Use bullet points for specific news items. 
+        4. ## DATA & TRENDS: Use Markdown tables if multiple prices or dates are found.
+        5. CLEANING: Fix any missing spaces (e.g., 'AInews' -> 'AI News') and remove redundant snippets.
+
+        METHODOLOGY:
+        - Call 'web_research' to get raw data.
+        - Analyze the raw text.
+        - SYNTHESIZE the findings into the structure above.
+        - Respond with the synthesized report."""
