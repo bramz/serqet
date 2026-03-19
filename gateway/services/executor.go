@@ -96,18 +96,33 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			return fmt.Sprintf("Successfully synchronized %d assets from Kraken.", count), "view_finance"
 
 
-		case "execute_save_trading_signal":
-			signal := models.TradingSignals{
-				Asset:     data["asset"].(string),
-				Action:    data["action"].(string),
-				Price:     data["price"].(float64),
-				Reasoning: data["reasoning"].(string),
-				Confidence: data["confidence"].(float64),
-				Status:    "Pending",
+		case "execute_get_market_analysis":
+			pair := utils.SafeString(data, "pair")
+			if pair == "" { pair = "XXBTZUSD" }
+			
+			candles, err := FetchMarketCandles(pair)
+			if err != nil {
+				return "Error fetching market data from Kraken.", ""
 			}
-			db.Instance.Create(&signal)
-			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
 
+			fmt.Printf("candles: %+v\n", candles)
+			return "", "" // Logic in intent.go should pass this data back to brain
+
+		case "execute_execute_save_trading_signal":
+			signal := models.TradingSignal{
+				Asset:      utils.SafeString(data, "asset"),
+				Action:     utils.SafeString(data, "signal_action"),
+				Price:      utils.ParseNumeric(data["price"]),
+				Reasoning:  utils.SafeString(data, "reasoning"),
+				Confidence: utils.ParseNumeric(data["confidence"]),
+				Status:     "Pending",
+			}
+			
+			if err := db.Instance.Create(&signal).Error; err != nil {
+				return "Error saving signal.", ""
+			}
+			
+			return fmt.Sprintf("New %s signal generated for %s.", signal.Action, signal.Asset), "view_finance"
    
 		case "execute_web_research":
 			q := utils.SafeString(data, "query")

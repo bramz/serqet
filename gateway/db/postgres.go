@@ -25,7 +25,7 @@ func Connect() error {
 		&models.TaskRecord{},
 		&models.DietRecord{},
 		&models.WorkoutRecord{},
-		&models.TradingSignals{},
+		&models.TradingSignal{},
 		&models.ResearchReports{},
 		&models.SystemEvent{},
 		&models.RevenueCampaign{},

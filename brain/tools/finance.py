@@ -77,42 +77,47 @@ def analyze_technical_indicators(ohlc_data: list):
         "trend": "Bullish" if df['close'].iloc[-1] > sma_20 else "Bearish"
     }
 
-
 @tool
 def generate_trading_signal(asset: str, candles: list):
     """
-    Analyzes price candles to generate a BUY/SELL/HOLD signal.
-    Calculates RSI and Moving Averages.
+    Analyzes price candles (OHLC) to generate a BUY/SELL/HOLD signal.
+    Input: asset name (e.g. 'BTC') and a list of candle data.
     """
-    # Convert list of dicts to DataFrame
+    if not candles or len(candles) < 14:
+        return {"status": "error", "message": "Insufficient market data."}
+
+    # Convert to DataFrame for RSI calculation
     df = pd.DataFrame(candles)
     df['close'] = df['close'].astype(float)
     
-    # Simple RSI calculation
+    # Simple RSI Logic
     delta = df['close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs)).iloc[-1]
     
+    current_price = df['close'].iloc[-1]
+    
     action = "HOLD"
     confidence = 0.5
-    reasoning = f"RSI is neutral at {rsi:.2f}"
+    reasoning = f"Market is neutral. RSI at {rsi:.2f}."
 
     if rsi < 35:
         action = "BUY"
-        confidence = 0.8
-        reasoning = f"Asset is oversold (RSI: {rsi:.2f}). Potential reversal."
+        confidence = 0.85
+        reasoning = f"Asset is oversold (RSI: {rsi:.2f}). Strong entry signal detected."
     elif rsi > 65:
         action = "SELL"
-        confidence = 0.75
-        reasoning = f"Asset is overbought (RSI: {rsi:.2f}). Taking profits recommended."
+        confidence = 0.80
+        reasoning = f"Asset is overbought (RSI: {rsi:.2f}). Profit-taking recommended."
 
+    # CRITICAL: This is the data Go will use to populate the DB
     return {
         "action": "execute_save_trading_signal",
         "asset": asset,
         "signal_action": action,
-        "price": df['close'].iloc[-1],
+        "price": current_price,
         "reasoning": reasoning,
         "confidence": confidence
     }

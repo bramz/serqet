@@ -8,7 +8,7 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v3"
-	"gorm.io/gorm"
+	// "gorm.io/gorm"
 )
 
 func GetVentures(c fiber.Ctx) error {
@@ -74,7 +74,7 @@ func GetCryptoHoldings(c fiber.Ctx) error {
 }
 
 func GetSignals(c fiber.Ctx) error {
-	var signals []models.TradingSignals
+	var signals []models.TradingSignal
 	
 	result := db.Instance.Order("status desc, created_at desc").Limit(10).Find(&signals)
 	if result.Error != nil {
@@ -91,7 +91,7 @@ func UpdateSignalStatus(c fiber.Ctx) error {
 	}
 	c.Bind().JSON(&body)
 
-	db.Instance.Model(&models.TradingSignals{}).Where("id = ?", id).Update("status", body.Status)
+	db.Instance.Model(&models.TradingSignal{}).Where("id = ?", id).Update("status", body.Status)
 	return c.JSON(fiber.Map{"status": "updated"})
 }
 
@@ -99,19 +99,18 @@ func GetNetWorthAnalysis(c fiber.Ctx) error {
 	var holdings []models.CryptoHoldings
 	var expenses []models.FinanceRecord
 	
-	database := c.Locals("db").(*gorm.DB)
-	database.Find(&holdings)
-	database.Find(&expenses)
+	// Use global Instance for consistency
+	db.Instance.Find(&holdings)
+	db.Instance.Find(&expenses)
 
 	totalExpenses := 0.0
 	for _, e := range expenses {
-		totalExpenses += utils.ParseNumeric(e.Amount)
+		totalExpenses += e.Amount
 	}
 
-	// For now return the raw holdings and the total spent
 	return c.JSON(fiber.Map{
 		"crypto_holdings": holdings,
 		"total_spent":     totalExpenses,
-		"status":          "Analysis complete. Portfolio is healthy.",
+		"status":          "Neural analysis complete.",
 	})
 }
