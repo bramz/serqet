@@ -25,23 +25,46 @@ def agent_node(state: AgentState):
         sys_prompt = f"{agent.get_system_prompt()}\n\nSESSION CONTEXT:\n{context or 'None'}"
         response = llm_with_tools.invoke([SystemMessage(content=sys_prompt)] + state["messages"])
         
-        if hasattr(response, 'tool_calls') and response.tool_calls:
+        if hasattr(response, 'tool_calls') and len(response.tool_calls) > 0:
             t_call = response.tool_calls[0]
             tool_name = t_call['name']
             tool_args = t_call['args']
             
-            print(f"--- [KERNEL] Specialist Requesting: {tool_name} ---")
+            print(f"[BRAIN] Specialist Requesting: {tool_name}")
             target_func = TOOL_MAP.get(tool_name)
             
             if target_func:
                 tool_output = target_func.invoke(tool_args)
                 
-                if "candles" in tool_output or "findings" in tool_output and tool_name == "web_research":
-                    print(f"[BRAIN] Intermediate data received from {tool_name}. Re-invoking...")
+                if tool_name == "web_research":
+                    print(f"[BRAIN] Raw research data received. Synthesizing report...")
                     
+                    synthesis_prompt = f"""
+                    USER_QUERY: {tool_args.get('query')}
+                    RAW_DATA: {tool_output.get('findings')}
+                    
+                    TASK: Clean this data into a professional Markdown Intelligence Report.
+                    - Fix jumbled text and missing spaces.
+                    - Use bold headers and clean lists.
+                    - Return ONLY the clean markdown text.
+                    """
+                    
+                    clean_res = get_llm("gemini").invoke(synthesis_prompt)
+                    clean_markdown = parse_content(clean_res.content)
+
+                    return {
+                        "messages": [AIMessage(content=clean_markdown)], 
+                        "action": "execute_web_research",
+                        "tool_data": {
+                            "query": tool_args.get("query"),
+                            "findings": clean_markdown
+                        }
+                    }
+
+                if "candles" in tool_output:
+                    print(f"[BRAIN] Market data received. Re-invoking for signal generation...")
                     state["messages"].append(response)
-                    state["messages"].append(HumanMessage(content=f"SYSTEM DATA RECEIVED: {tool_output}. Please proceed with the next step of your instructions."))
-                    
+                    state["messages"].append(HumanMessage(content=f"SYSTEM DATA: {tool_output['candles']}. Generate signal."))
                     return agent_node(state)
 
                 return {
@@ -50,6 +73,7 @@ def agent_node(state: AgentState):
                     "tool_data": tool_output
                 }
         
+        # STANDARD CONVERSATION
         text = parse_content(response.content)
         clean_text, action = extract_action_and_clean(text)
         
@@ -59,7 +83,7 @@ def agent_node(state: AgentState):
         return {"messages": [AIMessage(content=clean_text)], "action": action}
 
     except Exception as e:
-        print(f"!!! [KERNEL PANIC]: {e} !!!")
+        print(f"!!! [ BRAIN PANIC]: {e} !!!")
         return trigger_ai_fallback(query, state, "neural_link")
 
 def trigger_ai_fallback(query: str, state: AgentState, context: str = "general"):
