@@ -1,139 +1,165 @@
 import requests
 import pandas as pd
+from typing import List, Dict, Any, Annotated, Optional
 from langchain_core.tools import tool
 
+GATEWAY_URL = "http://localhost:8001/api/v1"
 
 @tool
-def record_expense(amount: float, category: str, description: str):
+def record_expense(
+    amount: Annotated[float, "The numerical value of the expense"],
+    category: Annotated[str, "The category of spending (e.g., food, rent, tech)"],
+    description: Annotated[str, "A brief description of the purchase"]
+) -> Dict[str, Any]:
     """
-    Records a financial expense. 
-    Call this when the user mentions spending money, buying something, or paying a bill.
+    Records a financial expense to the ledger. 
+    Call this when the user mentions spending money or buying an item.
     """
-    return {"action": "db_record_expense", "amount": amount, "category": category, "description": description}
+    return {
+        "action": "db_record_expense", 
+        "amount": amount, 
+        "category": category, 
+        "description": description
+    }
 
 @tool
-def record_savings(amount: float, source: str, description: str):
+def record_savings(
+    amount: Annotated[float, "The numerical value saved or earned"],
+    source: Annotated[str, "The source of the funds (e.g., salary, gift, interest)"],
+    description: Annotated[str, "Context regarding the income or saving"]
+) -> Dict[str, Any]:
     """
-    Records a financial saving. 
-    Call this when the user mentions saving money, earning interest, or receiving income.
+    Records financial income or savings. 
+    Call this when the user mentions earning money or receiving funds.
     """
-    return {"action": "db_record_savings", "amount": amount, "source": source, "description": description}
+    return {
+        "action": "db_record_savings", 
+        "amount": amount, 
+        "source": source, 
+        "description": description
+    }
 
 @tool
-def get_market_analysis(asset: str = "BTC"):
+def get_market_analysis(
+    asset: Annotated[str, "The ticker symbol of the asset, e.g., 'BTC' or 'ETH'"] = "BTC"
+) -> Dict[str, Any]:
     """
-    Fetches the current price and 24h trend for a crypto asset.
-    Use this to help decide if it's a good time to buy or sell.
+    Fetches raw 24h OHLC (Open, High, Low, Close) market data for a crypto asset.
+    This is a prerequisite for generating trading signals.
     """
-    # This tool will call our Go Gateway's market endpoint
-    return {"action": "api_get_market_data", "asset": asset}
+    # map simple names to pairs
+    pair_map = {"BTC": "XXBTZUSD", "ETH": "XETHZUSD", "SOL": "SOLUSD"}
+    pair = pair_map.get(asset.upper(), "XXBTZUSD")
+    
+    try:
+        response = requests.get(f"{GATEWAY_URL}/finance/ohlc?pair={pair}", timeout=10)
+        if response.status_code == 200:
+            return {"candles": response.json(), "asset": asset}
+    except Exception as e:
+        return {"status": "error", "message": f"Connection to Gateway failed: {str(e)}"}
+    
+    return {"status": "error", "message": "Could not retrieve market data."}
 
 @tool
-def sync_portfolio():
+def sync_portfolio() -> Dict[str, Any]:
     """
-    Syncs the latest holdings from Kraken to the local database.
-    Use this if the user asks 'Update my portfolio' or 'What are my current balances?'.
+    Syncs the latest holdings from the Kraken Exchange to the local OS database.
+    Use this if the user asks to 'update' or 'refresh' their balances.
     """
     return {"action": "execute_sync_holdings"}
 
 @tool
-def get_portfolio_summary():
+def get_portfolio_summary() -> Dict[str, Any]:
     """
-    Retrieves the locally stored crypto holdings.
-    Use this to answer questions about what assets the user owns.
+    Retrieves the current crypto holdings from the local database.
+    Use this to answer questions about what assets the user currently owns.
     """
     return {"action": "api_get_holdings"}
 
 @tool
-def analyze_net_worth():
+def analyze_net_worth() -> Dict[str, Any]:
     """
-    Calculates the user's total net worth by combining local expenses, 
-    income records, and Kraken crypto holdings.
-    Use this when the user asks 'How am I doing financially?' or 'What is my net worth?'.
+    Calculates total net worth by aggregating expenses, income, and crypto holdings.
+    Use this for high-level financial health queries.
     """
     return {"action": "api_get_net_worth_analysis"}
 
 @tool
-def analyze_technical_indicators(ohlc_data: list):
+def generate_trading_signal(
+    asset: Annotated[str, "The name of the asset"],
+    candles: Annotated[List[Dict[str, Any]], "A list of OHLC candle dictionaries"]
+) -> Dict[str, Any]:
     """
-    Calculates RSI and Moving Averages from OHLC data.
-    Input should be a list of price candles.
-    """
-    df = pd.DataFrame(ohlc_data, columns=['time', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
-    df['close'] = df['close'].astype(float)
-    
-    sma_20 = df['close'].rolling(window=20).mean().iloc[-1]
-    
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs)).iloc[-1]
-    
-    return {
-        "current_price": df['close'].iloc[-1],
-        "rsi": round(rsi, 2),
-        "sma_20": round(sma_20, 2),
-        "trend": "Bullish" if df['close'].iloc[-1] > sma_20 else "Bearish"
-    }
-
-@tool
-def generate_trading_signal(asset: str, candles: list):
-    """
-    Analyzes price candles (OHLC) to generate a BUY/SELL/HOLD signal.
-    Input: asset name (e.g. 'BTC') and a list of candle data.
+    Analyzes price candles using technical indicators (RSI) to generate a BUY/SELL/HOLD signal.
     """
     if not candles or len(candles) < 14:
-        return {"status": "error", "message": "Insufficient market data."}
+        return {"status": "error", "message": "Insufficient data for technical analysis."}
 
-    # Convert to DataFrame for RSI calculation
-    df = pd.DataFrame(candles)
-    df['close'] = df['close'].astype(float)
-    
-    # Simple RSI Logic
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs)).iloc[-1]
-    
-    current_price = df['close'].iloc[-1]
-    
-    action = "HOLD"
-    confidence = 0.5
-    reasoning = f"Market is neutral. RSI at {rsi:.2f}."
+    try:
+        df = pd.DataFrame(candles)
+        df['close'] = df['close'].astype(float)
+        
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        
+        rs = gain / loss.replace(0, 0.001)
+        rsi = 100 - (100 / (1 + rs)).iloc[-1]
+        
+        current_price = df['close'].iloc[-1]
+        
+        action = "HOLD"
+        confidence = 0.5
+        reasoning = f"RSI is currently neutral at {rsi:.2f}."
 
-    if rsi < 35:
-        action = "BUY"
-        confidence = 0.85
-        reasoning = f"Asset is oversold (RSI: {rsi:.2f}). Strong entry signal detected."
-    elif rsi > 65:
-        action = "SELL"
-        confidence = 0.80
-        reasoning = f"Asset is overbought (RSI: {rsi:.2f}). Profit-taking recommended."
+        if rsi < 35:
+            action = "BUY"
+            confidence = 0.85
+            reasoning = f"Asset is oversold (RSI: {rsi:.2f}). High probability of upward correction."
+        elif rsi > 65:
+            action = "SELL"
+            confidence = 0.80
+            reasoning = f"Asset is overbought (RSI: {rsi:.2f}). Consider taking profits."
 
-    # CRITICAL: This is the data Go will use to populate the DB
-    return {
-        "action": "execute_save_trading_signal",
-        "asset": asset,
-        "signal_action": action,
-        "price": current_price,
-        "reasoning": reasoning,
-        "confidence": confidence
-    }
+        return {
+            "action": "execute_generate_trading_signal",
+            "asset": asset,
+            "signal_action": action,
+            "price": float(current_price),
+            "reasoning": reasoning,
+            "confidence": float(confidence)
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Analysis failed: {str(e)}"}
 
-# @tool
-# def execute_kraken_trade(pair: str, action: str, volume: float, order_type: str = "market"):
-#     """
-#     Executes a real trade on Kraken. 
-#     'action' must be 'buy' or 'sell'.
-#     'pair' should be like 'XXBTZUSD'.
-#     'volume' is the amount of the asset.
-#     """
-#     return {
-#         "action": "execute_crypto_trade",
-#         "pair": pair,
-#         "side": action,
-#         "volume": volume,
-#         "order_type": order_type
-#     }
+@tool
+def analyze_technical_indicators(
+    ohlc_data: Annotated[List[Dict[str, Any]], "The raw price candle data list"]
+) -> Dict[str, Any]:
+    """
+    Advanced utility to calculate RSI, SMA, and Trend for raw market data.
+    """
+    try:
+        df = pd.DataFrame(ohlc_data)
+        df['close'] = df['close'].astype(float)
+        
+        # SMA 20
+        sma_20 = df['close'].rolling(window=20).mean().iloc[-1]
+        
+        # RSI
+        delta = df['close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss.replace(0, 0.001)
+        rsi = 100 - (100 / (1 + rs)).iloc[-1]
+        
+        curr = df['close'].iloc[-1]
+        
+        return {
+            "current_price": float(curr),
+            "rsi": round(float(rsi), 2),
+            "sma_20": round(float(sma_20), 2),
+            "trend": "Bullish" if curr > sma_20 else "Bearish"
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

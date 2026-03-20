@@ -108,7 +108,7 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			fmt.Printf("candles: %+v\n", candles)
 			return "", "" // Logic in intent.go should pass this data back to brain
 
-		case "execute_execute_save_trading_signal":
+		case "execute_generate_trading_signal":
 			signal := models.TradingSignal{
 				Asset:      utils.SafeString(data, "asset"),
 				Action:     utils.SafeString(data, "signal_action"),
