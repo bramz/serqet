@@ -51,6 +51,7 @@ func main() {
 	v1.Get("/finance/sync", api.SyncHoldings)
 	v1.Get("/finance/signals", api.GetSignals)
 	v1.Patch("/finance/signals/:id", api.UpdateSignalStatus)
+	v1.Get("/finance/ohlc", api.GetOHLCData)
 
 	// health
 	v1.Get("/health/stats", api.GetHealthStats)

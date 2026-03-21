@@ -6,37 +6,18 @@ from agents.loader import get_agent_for_intent
 from providers.factory import get_llm
 from utils.parser import parse_content, extract_action_and_clean
 from core.memory import memory_engine
-# Tool Registry
-from tools.social import create_social_draft
-from tools.finance import record_expense, sync_portfolio, get_portfolio_summary
-from tools.tasks import create_task
-from tools.jobs import track_job_application
-from tools.health import record_meal, record_workout
-from tools.research import web_research
+from tools import ALL_TOOLS
 
-TOOL_MAP = {
-    "create_social_draft": create_social_draft,
-    "record_expense": record_expense,
-    "create_task": create_task,
-    "track_job_application": track_job_application,
-    "record_meal": record_meal,
-    "record_workout": record_workout,
-    "sync_portfolio": sync_portfolio,
-    "get_portfolio_summary": get_portfolio_summary,
-    "web_research": web_research
-}
-TOOL_LIST = list(TOOL_MAP.values())
+TOOL_MAP = {t.name: t for t in ALL_TOOLS}
 
 def agent_node(state: AgentState):
     query = state["messages"][-1].content
     session_id = state.get("session_id", "default")
     
     context = memory_engine.recall(query, session_id=session_id) 
-    
     agent = get_agent_for_intent(query)
-    print(f"Specialist: {agent.name}, Session ID: {session_id}")
-
-    allowed_tools = [t for t in TOOL_LIST if t.name in agent.allowed_tools]
+    
+    allowed_tools = [t for t in ALL_TOOLS if t.name in agent.allowed_tools]
     llm = get_llm("gemini")
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm
     
@@ -44,55 +25,53 @@ def agent_node(state: AgentState):
         sys_prompt = f"{agent.get_system_prompt()}\n\nSESSION CONTEXT:\n{context or 'None'}"
         response = llm_with_tools.invoke([SystemMessage(content=sys_prompt)] + state["messages"])
         
-        if response.content:
-            memory_engine.archive(
-                text=f"User: {query} | Serqet: {response.content}",
-                metadata={"session_id": session_id, "agent": agent.name}
-            )
-
-        
-        if hasattr(response, 'tool_calls') and response.tool_calls:
+        if hasattr(response, 'tool_calls') and len(response.tool_calls) > 0:
             t_call = response.tool_calls[0]
             tool_name = t_call['name']
             tool_args = t_call['args']
             
-            print(f"Executing {tool_name} in Python...")
-            
-            if tool_name == "web_research":
-                raw_results = web_research.invoke(t_call['args'])
-                
-                synthesis_prompt = f"""
-                QUERY: {t_call['args']['query']}
-                RAW DATA: {raw_results['findings']}
-                TASK: Rewrite this into a professional Markdown Intelligence Report.
-                Return ONLY the markdown.
-                """
-                
-                # 1. Get the response from Gemini
-                synthesis_res = get_llm("gemini").invoke(synthesis_prompt)
-                
-                # 2. THE FIX: Extract the actual text string from the response object
-                # This removes the {'type': 'text', 'text': ...} wrapper
-                from utils.parser import parse_content
-                clean_markdown = parse_content(synthesis_res.content)
-
-                return {
-                    "messages": [response], 
-                    "action": "execute_web_research",
-                    "tool_data": {
-                        "query": t_call['args']['query'],
-                        "findings": clean_markdown # This is now a clean string
-                    }
-                }
-            # Find the function and run it
+            print(f"[BRAIN] Specialist Requesting: {tool_name}")
             target_func = TOOL_MAP.get(tool_name)
+            
             if target_func:
                 tool_output = target_func.invoke(tool_args)
                 
-                # Check for Tool Failures (e.g., DDG returning nothing)
-                if tool_output.get("findings") == "NOT_FOUND" or not tool_output:
-                    print(f"Tool {tool_name} failed. Running AI Fallback...")
-                    return trigger_ai_fallback(query, state, tool_name)
+                if "rsi" in tool_output:
+                    print(f"[BRAIN] Indicators calculated. Deciding signal for {tool_args.get('asset')}")
+                    state["messages"].append(response)
+                    state["messages"].append(HumanMessage(content=f"INDICATOR SUMMARY: {tool_output}. Based on this RSI and Trend, call generate_trading_signal now."))
+                    return agent_node(state)
+                
+                if tool_name == "web_research":
+                    print(f"[BRAIN] Raw research data received. Synthesizing report...")
+                    
+                    synthesis_prompt = f"""
+                    USER_QUERY: {tool_args.get('query')}
+                    RAW_DATA: {tool_output.get('findings')}
+                    
+                    TASK: Clean this data into a professional Markdown Intelligence Report.
+                    - Fix jumbled text and missing spaces.
+                    - Use bold headers and clean lists.
+                    - Return ONLY the clean markdown text.
+                    """
+                    
+                    clean_res = get_llm("gemini").invoke(synthesis_prompt)
+                    clean_markdown = parse_content(clean_res.content)
+
+                    return {
+                        "messages": [AIMessage(content=clean_markdown)], 
+                        "action": "execute_web_research",
+                        "tool_data": {
+                            "query": tool_args.get("query"),
+                            "findings": clean_markdown
+                        }
+                    }
+
+                if "candles" in tool_output:
+                    print(f"[BRAIN] Market data received. Re-invoking for signal generation...")
+                    state["messages"].append(response)
+                    state["messages"].append(HumanMessage(content=f"SYSTEM DATA: {tool_output['candles']}. Generate signal."))
+                    return agent_node(state)
 
                 return {
                     "messages": [response], 
@@ -100,25 +79,18 @@ def agent_node(state: AgentState):
                     "tool_data": tool_output
                 }
         
+        # STANDARD CONVERSATION
         text = parse_content(response.content)
-        
-        if agent.name == "research" and "ACTION: view_research" not in text:
-            print("Research logic skipped tool. Forcing Fallback.")
-            return trigger_ai_fallback(query, state, "research")
-
         clean_text, action = extract_action_and_clean(text)
         
-        if not clean_text and not action:
-            return trigger_ai_fallback(query, state)
+        if clean_text:
+            memory_engine.archive(f"User: {query} | Serqet: {clean_text}", {"session_id": session_id})
 
-        return {
-            "messages": [AIMessage(content=clean_text)],
-            "action": action
-        }
+        return {"messages": [AIMessage(content=clean_text)], "action": action}
 
     except Exception as e:
-        print(f"!!! [BRAIN PANIC]: {e} !!!")
-        return trigger_ai_fallback(query, state, "system_error")
+        print(f"!!! [ BRAIN PANIC]: {e} !!!")
+        return trigger_ai_fallback(query, state, "neural_link")
 
 def trigger_ai_fallback(query: str, state: AgentState, context: str = "general"):
     """The safety net that ensures Serqet always responds intelligently."""

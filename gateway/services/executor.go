@@ -95,20 +95,36 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 
 			return fmt.Sprintf("Successfully synchronized %d assets from Kraken.", count), "view_finance"
 
+		// case "execute_get_market_analysis":
+		// 	pair := utils.SafeString(data, "pair")
+		// 	if pair == "" { pair = "XXBTZUSD" }
 
-		case "execute_save_trading_signal":
-			signal := models.TradingSignals{
-				Asset:     data["asset"].(string),
-				Action:    data["action"].(string),
-				Price:     data["price"].(float64),
-				Reasoning: data["reasoning"].(string),
-				Confidence: data["confidence"].(float64),
-				Status:    "Pending",
+		// 	candles, err := FetchMarketCandles(pair)
+		// 	if err != nil {
+		// 		return "Error fetching market data", "", nil
+		// 	}
+
+		// 	return "Market data retrieved", "view_finance", candles
+			
+		case "execute_generate_trading_signal":
+			log.Printf("[TRADER] AI generated signal: %v for %v", data["signal_action"], data["asset"])
+			
+			signal := models.TradingSignal{
+				Asset:      utils.SafeString(data, "asset"),
+				Action:     utils.SafeString(data, "signal_action"), // BUY/SELL/HOLD
+				Price:      utils.ParseNumeric(data["price"]),
+				Reasoning:  utils.SafeString(data, "reasoning"),
+				Confidence: utils.ParseNumeric(data["confidence"]),
+				Status:     "Pending",
 			}
-			db.Instance.Create(&signal)
-			return fmt.Sprintf("Serqet AI has generated a %s signal for %s.", signal.Action, signal.Asset), "view_finance"
-
-   
+			
+			if err := db.Instance.Create(&signal).Error; err != nil {
+				log.Printf("[DB ERROR] %v", err)
+				return "Internal DB Error", ""
+			}
+			
+			return fmt.Sprintf("Signal Archived: %s %s", signal.Action, signal.Asset), "view_finance"
+	
 		case "execute_web_research":
 			q := utils.SafeString(data, "query")
 			f := utils.SafeString(data, "findings")

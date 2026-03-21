@@ -17,14 +17,14 @@ type CryptoHoldings struct {
 	USDValue  float64 `json:"usd_value"`  // Last synced USD value
 }
 
-type TradingSignals struct {
-	Base
-	Asset     string  `json:"asset"`
-	Action    string  `json:"action"`
-	Price     float64 `json:"price"`
-	Reasoning string  `json:"reasoning"`
-	Confidence float64 `json:"confidence"` // 0.0 to 1.0
-	Status    string  `json:"status"`     // "Pending", "Executed", "Dismissed"
+type TradingSignal struct {
+    gorm.Model
+    Asset      string  `json:"asset"`
+    Action     string  `json:"action"`
+    Price      float64 `json:"price"`
+    Reasoning  string  `json:"reasoning"`
+    Confidence float64 `json:"confidence"`
+    Status     string  `json:"status"`
 }
 
 type RevenueCampaign struct {

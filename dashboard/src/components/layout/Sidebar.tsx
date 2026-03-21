@@ -143,7 +143,7 @@ export function Sidebar({
                <div className="space-y-2">
                  <div className="flex justify-between items-center text-[9px] font-black text-zinc-500 uppercase">
                     <span>Context Depth</span>
-                    <span className="text-primary">4.0k Tokens</span>
+                    <span className="text-white"></span>
                  </div>
                  <div className="h-1 w-full bg-zinc-900 rounded-full overflow-hidden">
                     <div className="h-full bg-primary w-[45%]" />
