@@ -36,6 +36,12 @@ def agent_node(state: AgentState):
             if target_func:
                 tool_output = target_func.invoke(tool_args)
                 
+                if "rsi" in tool_output:
+                    print(f"[BRAIN] Indicators calculated. Deciding signal for {tool_args.get('asset')}")
+                    state["messages"].append(response)
+                    state["messages"].append(HumanMessage(content=f"INDICATOR SUMMARY: {tool_output}. Based on this RSI and Trend, call generate_trading_signal now."))
+                    return agent_node(state)
+                
                 if tool_name == "web_research":
                     print(f"[BRAIN] Raw research data received. Synthesizing report...")
                     

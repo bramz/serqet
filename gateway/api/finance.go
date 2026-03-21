@@ -114,3 +114,13 @@ func GetNetWorthAnalysis(c fiber.Ctx) error {
 		"status":          "Neural analysis complete.",
 	})
 }
+
+func GetOHLCData(c fiber.Ctx) error {
+	pair := c.Query("pair", "XXBTZUSD")
+	candles, err := services.FetchMarketCandles(pair)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Error fetching market data"})
+	}
+
+	return c.JSON(candles)
+}
