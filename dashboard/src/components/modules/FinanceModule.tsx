@@ -147,54 +147,124 @@ function AlgoTradingView({ onQuickAction
   );
 }
 
-// --- SUB-VIEW: VENTURE HUB ---
+// --- SUB-VIEW: VENTURE HUB
 function VentureHub({ onQuickAction }: { onQuickAction?: (q: string) => void }) {
   const [ventures, setVentures] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchVentures = () => {
     fetch(`${GATEWAY_URL}/api/v1/finance/ventures`)
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setVentures(data); });
+      .then(data => {
+        if (Array.isArray(data)) setVentures(data);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchVentures();
+    const interval = setInterval(fetchVentures, 20000); // Periodic sync
+    return () => clearInterval(interval);
   }, []);
+
+  if (loading) return <div className="p-10 font-black text-[10px] text-zinc-600 uppercase tracking-widest animate-pulse">Synchronizing Incubator...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center px-1">
-        <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Revenue Incubator</h3>
+      {/* Header Actions */}
+      <div className="flex justify-between items-center bg-zinc-900/30 p-4 rounded-2xl border border-zinc-800">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-500/10 rounded-lg">
+            <Target className="text-emerald-500" size={18} />
+          </div>
+          <div>
+            <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Revenue Intelligence</h3>
+            <p className="text-[9px] text-zinc-500 font-bold uppercase">Active Projects: {ventures.length}</p>
+          </div>
+        </div>
         <button 
-          onClick={() => onQuickAction?.("Scout for a new automated revenue niche and propose a venture plan.")}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-[10px] font-black uppercase hover:bg-emerald-500 hover:text-white transition-all"
+          onClick={() => onQuickAction?.("Perform a deep-web scout for a new automated revenue niche. Analyze profitability and propose a 3-step venture plan.")}
+          className="px-6 py-2.5 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:opacity-90 transition-all border-t border-white/10 shadow-lg"
         >
-          <Target size={12} /> Scout New Niche
+          Initialize New Scout
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Venture Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {ventures.length > 0 ? ventures.map((v) => (
-          <Card key={v.ID || v.id} className="bg-zinc-950 border-zinc-900 p-6 hover:border-primary/40 transition-all group relative overflow-hidden">
-            <div className="flex justify-between items-start mb-4">
-               <span className="text-[8px] font-black bg-primary/20 text-primary px-2 py-0.5 rounded uppercase">{v.category}</span>
-               <span className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">{v.status}</span>
+          <Card key={v.ID || v.id} className="bg-zinc-950 border-zinc-900 overflow-hidden hover:border-primary/40 transition-all group">
+            <div className="p-6">
+              {/* Top Row: Meta */}
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex gap-2">
+                  <span className="text-[8px] font-black bg-zinc-900 text-primary border border-primary/20 px-2 py-0.5 rounded uppercase tracking-widest">
+                    {v.category}
+                  </span>
+                  <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${
+                    v.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'
+                  }`}>
+                    {v.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] font-mono text-zinc-600">
+                  <Globe size={10} />
+                  <span>{v.platform}</span>
+                </div>
+              </div>
+
+              {/* Title & Strategy */}
+              <h3 className="text-xl font-black text-white uppercase italic tracking-tighter mb-2 group-hover:text-primary transition-colors">
+                {v.name}
+              </h3>
+              <div className="bg-black/40 p-3 rounded-lg border border-zinc-900 mb-6">
+                <p className="text-[11px] text-zinc-400 leading-relaxed font-medium">
+                  <span className="text-primary font-black mr-2">STRATEGY:</span>
+                  {v.strategy_summary}
+                </p>
+              </div>
+
+              {/* Financial Progress */}
+              <div className="grid grid-cols-2 gap-4 border-t border-zinc-900 pt-4">
+                <div>
+                  <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Projected ROI</p>
+                  <p className="text-lg font-mono font-black text-white">{v.projected_roi}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Realized Yield</p>
+                  <p className="text-lg font-mono font-black text-emerald-500">${v.revenue_earned?.toLocaleString() || "0.00"}</p>
+                </div>
+              </div>
             </div>
-            <h3 className="text-lg font-black text-white uppercase italic tracking-tight">{v.name}</h3>
-            <p className="text-[11px] text-zinc-500 mt-2 line-clamp-2 leading-relaxed">"{v.strategy_summary}"</p>
-            
-            <div className="mt-6 pt-4 border-t border-zinc-900 grid grid-cols-2 gap-4">
-               <div>
-                  <p className="text-[9px] font-black text-zinc-600 uppercase">Target ROI</p>
-                  <p className="text-sm font-mono text-primary font-bold">{v.projected_roi}</p>
-               </div>
-               <div className="text-right border-l border-zinc-900 pl-4">
-                  <p className="text-[9px] font-black text-zinc-600 uppercase">Realized</p>
-                  <p className="text-sm font-mono text-emerald-500 font-bold">${v.revenue_earned?.toFixed(2) || "0.00"}</p>
-               </div>
+
+            {/* Action Footer */}
+            <div className="bg-zinc-900/50 p-3 border-t border-zinc-900 flex gap-2">
+              <button 
+                onClick={() => onQuickAction?.(`Analyze the performance of my '${v.name}' venture. Provide 3 optimization steps to scale revenue.`)}
+                className="flex-1 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest transition-all"
+              >
+                Analyze Performance
+              </button>
+              <button 
+                onClick={() => onQuickAction?.(`I have earned new revenue for '${v.name}'. Log a profit of $XX.XX to the database.`)}
+                className="flex-1 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-[9px] font-black text-zinc-500 hover:text-emerald-500 uppercase tracking-widest transition-all"
+              >
+                Log Revenue
+              </button>
             </div>
-            <TrendingUp className="absolute -right-4 -bottom-4 text-primary/5 w-24 h-24 rotate-12" />
           </Card>
         )) : (
-          <div className="col-span-full py-20 border border-dashed border-zinc-800 rounded-3xl text-center">
-             <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">No Active Ventures Found.</p>
-             <p className="text-xs text-zinc-500 mt-2">Initialize the revenue agent to identify market gaps.</p>
+          <div className="col-span-full py-20 border border-dashed border-zinc-800 rounded-3xl flex flex-col items-center justify-center bg-zinc-900/10">
+             <Rocket className="text-zinc-800 mb-4" size={48} />
+             <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest text-center">
+               Venture Incubator Empty. <br/> 
+               <span 
+                className="text-primary cursor-pointer hover:underline" 
+                onClick={() => onQuickAction?.("Scout for new automated revenue opportunities.")}
+               >
+                 Initialize Arbiter Protocol
+               </span>
+             </p>
           </div>
         )}
       </div>
