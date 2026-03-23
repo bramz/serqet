@@ -7,6 +7,7 @@ import (
 	"gateway/utils"
 	"log"
 	"strconv"
+	// "time"
 )
 
 
@@ -148,39 +149,6 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 
 			return fmt.Sprintf("Intelligence Report for '%s' has been synthesized and archived.", q), "view_research"
 
-		case "execute_launch_campaign":
-			campaign := models.RevenueCampaign{
-				Name: data["name"].(string),
-				Strategy: data["strategy"].(string),
-				Platform: data["platform"].(string),
-				Budget: data["budget"].(float64),
-				Status: "Active",
-			}
-
-			
-			if err := db.Instance.Create(&campaign).Error; err != nil {
-				return "Failed to initialize campaign registry.", ""
-			}
-
-			// Log the event for the Sidebar/Overview logs
-			EmitEvent("REVENUE", "Launched campaign: " + campaign.Name, "SUCCESS")
-			
-			return fmt.Sprintf("Revenue agent successfully initialized the '%s' campaign. Scaling protocols active.", campaign.Name), "view_revenue"
-
-		case "execute_db_launch_venture":
-			venture := models.VentureCampaign{
-				Name:            utils.SafeString(data, "name"),
-				Category:        utils.SafeString(data, "category"),
-				StrategySummary: utils.SafeString(data, "strategy"),
-				ProjectedROI:    utils.SafeString(data, "projected_roi"),
-				Platform:        utils.SafeString(data, "platform"),
-				Status:          "Incubating",
-			}
-			db.Instance.Create(&venture)
-			EmitEvent("REVENUE", "New Venture Incubated: "+venture.Name, "SUCCESS")
-			// Note: We return view_finance now instead of view_revenue
-			return fmt.Sprintf("Venture '%s' initialized in the Finance Hub.", venture.Name), "view_finance"
-
 		case "execute_record_income":
 			income := models.FinanceRecord{
 				Amount:      utils.ParseNumeric(data["amount"]),
@@ -190,6 +158,58 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 			db.Instance.Create(&income)
 			return fmt.Sprintf("Cash inflow of $%.2f recorded.", income.Amount), "view_finance"
+
+		case "execute_launch_venture", "execute_db_launch_venture":
+			log.Println("--- DEBUG: VENTURE EXECUTION STARTED ---")
+			
+			// Log the raw data map to see what Python sent
+			log.Printf("RAW DATA FROM PYTHON: %+v", data)
+
+			venture := models.VentureCampaign{
+				Name:            utils.SafeString(data, "name"),
+				Category:        utils.SafeString(data, "category"),
+				StrategySummary: utils.SafeString(data, "strategy"), // Check if Python sends 'strategy' or 'strategy_summary'
+				ProjectedROI:    utils.SafeString(data, "projected_roi"),
+				Platform:        utils.SafeString(data, "platform"),
+				Status:          "Active",
+				RevenueEarned:   0.0,
+			}
+
+			log.Printf("MAPPED STRUCT: %+v", venture)
+
+			// Check for DB errors explicitly
+			result := db.Instance.Create(&venture)
+			if result.Error != nil {
+				log.Printf("!!! DATABASE ERROR: %v", result.Error)
+				return "Internal DB Error", ""
+			}
+
+			log.Printf("SUCCESS: Venture saved with ID: %d", venture.ID)
+			return fmt.Sprintf("Venture '%s' initialized.", venture.Name), "view_finance"
+
+		case "execute_record_savings":
+			// This is used for recording profit from a venture
+			amount := utils.ParseNumeric(data["amount"])
+			description := utils.SafeString(data, "description")
+			
+			// 1. Log to generic finance ledger
+			income := models.FinanceRecord{
+				Amount:      amount,
+				Category:    "Venture Profit",
+				Description: description,
+				Type:        "income",
+			}
+			db.Instance.Create(&income)
+
+			// 2. Logic to attribute to a specific venture (if found in description)
+			// In a lifetime OS, we search for the venture name in the description
+			var v models.VentureCampaign
+			db.Instance.Where("name ILIKE ?", "%"+description+"%").First(&v)
+			if v.ID != 0 {
+				db.Instance.Model(&v).Update("revenue_earned", v.RevenueEarned + amount)
+			}
+
+			return fmt.Sprintf("Profit of $%.2f realized and indexed.", amount), "view_finance"
 		}
 
 	return "", ""

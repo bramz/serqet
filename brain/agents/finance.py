@@ -2,7 +2,12 @@ from .base import SerqetAgent
 
 class FinanceAgent(SerqetAgent):
     name = "finance"
-    allowed_tools = ["generate_trading_signal", "get_market_analysis", "sync_portfolio", "get_portfolio_summary"]
+    allowed_tools = [
+        "generate_trading_signal",
+        "get_market_analysis",
+        "sync_portfolio",
+        "get_portfolio_summary"
+    ]
     
     def get_system_prompt(self) -> str:
         return """You are the Serqet Wealth Manager. 

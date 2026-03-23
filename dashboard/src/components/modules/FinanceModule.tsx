@@ -167,7 +167,7 @@ function VentureHub({ onQuickAction }: { onQuickAction?: (q: string) => void }) 
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="p-10 font-black text-[10px] text-zinc-600 uppercase tracking-widest animate-pulse">Synchronizing Incubator...</div>;
+  if (loading) return <div className="p-10 font-black text-[10px] text-zinc-600 uppercase tracking-widest animate-pulse">Synchronizing ventures...</div>;
 
   return (
     <div className="space-y-6">
