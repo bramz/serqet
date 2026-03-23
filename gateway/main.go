@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/joho/godotenv"
 )
 
@@ -24,9 +25,11 @@ func main() {
 
 	app := fiber.New()
 	app.Use(cors.New())
+	app.Get("/uploads/*", static.New("./uploads"))
+
 
 	v1 := app.Group("/api/v1")
-
+		
 	// sessions
 	v1.Get("/sessions", api.GetSessions)
 	v1.Post("/sessions", api.CreateSession)
@@ -58,6 +61,10 @@ func main() {
 
 	// research
 	v1.Get("/research", api.GetResearch)
+
+	// uploads
+	v1.Post("/upload", api.UploadHandler)
+
 
 	log.Fatal(app.Listen(":8001"))
 }

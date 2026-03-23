@@ -12,23 +12,20 @@ import (
 func HandleIntent(c fiber.Ctx) error {
 	var body struct {
 		UserID    string `json:"user_id"`
-		SessionID string `json:"session_id"` // NEW: Track which session this belongs to
+		SessionID string `json:"session_id"`
 		Query     string `json:"query"`
+		FilePath  string `json:"file_path,omitempty"`
 	}
 	c.Bind().JSON(&body)
 
-	// Default session if none provided
 	if body.SessionID == "" { body.SessionID = "default" }
 
-	// 1. Fetch History filtered by Session
 	var history []models.ChatHistory
 	db.Instance.Where("session_id = ?", body.SessionID).Order("created_at desc").Limit(5).Find(&history)
 
-	// 2. Log System Activity
 	services.EmitEvent("BRAIN", "Processing intent for session: "+body.SessionID, "INFO")
 
-	// 3. Request Brain Intent
-	brainRes, err := services.RequestIntent(body.UserID, body.Query, history)
+	brainRes, err := services.RequestIntent(body.UserID, body.Query, body.FilePath, history)
 	if err != nil {
 		services.EmitEvent("BRAIN", "Neural Link timeout or failure", "ERROR")
 		return c.Status(502).JSON(fiber.Map{"error": "Brain offline"})
@@ -45,15 +42,14 @@ func HandleIntent(c fiber.Ctx) error {
 			log.Println("WARNING: Executor returned empty message for action:", brainRes.Action)
 		}
 	}
-	// 4. Save User Input to Persistent History
 	db.Instance.Create(&models.ChatHistory{
 		UserID:    body.UserID, 
 		SessionID: body.SessionID, 
 		Role:      "user", 
 		Text:      body.Query,
+		FilePath:  body.FilePath,
 	})
 
-	// 5. Tool Execution Logic
 	if brainRes.Action != "" {
 		services.EmitEvent("EXECUTOR", "Initializing tool: "+brainRes.Action, "INFO")
 		
@@ -65,12 +61,12 @@ func HandleIntent(c fiber.Ctx) error {
 		}
 	}
 
-	// 6. Save AI Response to Persistent History
 	db.Instance.Create(&models.ChatHistory{
 		UserID:    body.UserID, 
 		SessionID: body.SessionID, 
 		Role:      "serqet", 
 		Text:      brainRes.Message,
+		FilePath:  body.FilePath,
 	})
 
 	return c.JSON(brainRes)

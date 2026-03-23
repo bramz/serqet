@@ -11,8 +11,9 @@ type ChatSession struct {
 
 type ChatHistory struct {
 	gorm.Model
-	UserID    string `json:"user_id"`
-	SessionID string `json:"session_id" gorm:"index"` // Linked to ChatSession
-	Role      string `json:"role"`    // "user" or "serqet"
+	UserID    string `json:"user_id" gorm:"index"`
+	SessionID string `json:"session_id" gorm:"index"`
+	Role      string `json:"role"`
 	Text      string `json:"text"`
+	FilePath  string `json:"file_path"`
 }

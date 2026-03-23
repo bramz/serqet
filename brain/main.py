@@ -28,6 +28,7 @@ async def process_intent(req: IntentRequest):
         initial_state = {
             "messages": messages,
             "session_id": req.session_id,
+            "file_path": req.file_path,
             "action": None,
             "tool_data": None
         }

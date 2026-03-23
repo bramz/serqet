@@ -33,5 +33,5 @@ func StartExecutiveScheduler() {
 
 func triggerProactiveQuery(prompt string) {
 	log.Printf("[EXECUTIVE] Triggering: %s", prompt)
-	RequestIntent("SYSTEM_MANAGER", prompt, nil)
+	RequestIntent("SYSTEM_MANAGER", prompt, "", nil)
 }
