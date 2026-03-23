@@ -7,12 +7,13 @@ from .finance import (
     get_portfolio_summary, 
     analyze_net_worth, 
     analyze_technical_indicators, 
-    generate_trading_signal
+    generate_trading_signal,
 )
 from .tasks import create_task
 from .jobs import track_job_application
 from .health import record_meal, record_workout
 from .research import web_research
+from .arbiter import analyze_niche_profitability, scout_business_niche, launch_venture
 
 ALL_TOOLS = [
     create_social_draft,
@@ -28,5 +29,8 @@ ALL_TOOLS = [
     track_job_application,
     record_meal,
     record_workout,
-    web_research
+    web_research,
+    analyze_niche_profitability,
+    scout_business_niche,
+    launch_venture
 ]

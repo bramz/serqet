@@ -38,6 +38,9 @@ async def process_intent(req: IntentRequest):
         last_msg = result["messages"][-1]
         display_text = last_msg.content if last_msg.content else "Executing requested module..."
 
+        print(f"ACTION: {result.get('action')}")
+        print(f"DATA: {result.get('tool_data')}")
+
         return {
             "status": "success",
             "message": display_text,

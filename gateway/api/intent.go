@@ -4,6 +4,8 @@ import (
 	"gateway/db"
 	"gateway/models"
 	"gateway/services"
+	"log"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -23,7 +25,7 @@ func HandleIntent(c fiber.Ctx) error {
 	db.Instance.Where("session_id = ?", body.SessionID).Order("created_at desc").Limit(5).Find(&history)
 
 	// 2. Log System Activity
-	services.EmitEvent("KERNEL", "Processing intent for session: "+body.SessionID, "INFO")
+	services.EmitEvent("BRAIN", "Processing intent for session: "+body.SessionID, "INFO")
 
 	// 3. Request Brain Intent
 	brainRes, err := services.RequestIntent(body.UserID, body.Query, history)
@@ -32,6 +34,17 @@ func HandleIntent(c fiber.Ctx) error {
 		return c.Status(502).JSON(fiber.Map{"error": "Brain offline"})
 	}
 
+	log.Printf("BRAIN RESPONSE: Action=%s | Data=%+v", brainRes.Action, brainRes.Data)
+
+	if brainRes.Action != "" {
+		msg, action := services.ExecuteToolCall(brainRes.Action, brainRes.Data)
+		if msg != "" {
+			brainRes.Message = msg
+			brainRes.Action = action
+		} else {
+			log.Println("WARNING: Executor returned empty message for action:", brainRes.Action)
+		}
+	}
 	// 4. Save User Input to Persistent History
 	db.Instance.Create(&models.ChatHistory{
 		UserID:    body.UserID, 

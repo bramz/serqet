@@ -1,3 +1,4 @@
+import json
 import re
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
@@ -42,6 +43,18 @@ def agent_node(state: AgentState):
                     state["messages"].append(HumanMessage(content=f"INDICATOR SUMMARY: {tool_output}. Based on this RSI and Trend, call generate_trading_signal now."))
                     return agent_node(state)
                 
+
+                if tool_output.get("action") == "market_scout_initiated":
+                    search_result = TOOL_MAP["web_research"].invoke({"query": tool_output["search_query"]})
+                    state["messages"].append(response)
+                    state["messages"].append(HumanMessage(content=(
+                        f"RESEARCH RESULTS: {search_result['findings']}\n\n"
+                        "TASK: You MUST now call 'launch_venture' with a Name, Strategy, and ROI. "
+                        "Do not just describe it in text."
+                    )))
+                    return agent_node(state)
+
+
                 if tool_name == "web_research":
                     print(f"[BRAIN] Raw research data received. Synthesizing report...")
                     
@@ -57,6 +70,18 @@ def agent_node(state: AgentState):
                     
                     clean_res = get_llm("gemini").invoke(synthesis_prompt)
                     clean_markdown = parse_content(clean_res.content)
+
+                    if agent.name == "arbiter":
+                        print("[BRAIN] Arbiter needs to process this into a Venture. Chaining...")
+                        state["messages"].append(response)
+                        state["messages"].append(HumanMessage(content=(
+                            f"INTEL REPORT: {clean_markdown}\n\n"
+                            "Based on this research, you MUST now use the 'launch_venture' tool "
+                            "to save a specific business plan to the Venture Hub. "
+                            "Do not just describe it. Call the tool."
+                        )))
+                        return agent_node(state)
+                    
 
                     return {
                         "messages": [AIMessage(content=clean_markdown)], 
@@ -82,11 +107,33 @@ def agent_node(state: AgentState):
         # STANDARD CONVERSATION
         text = parse_content(response.content)
         clean_text, action = extract_action_and_clean(text)
-        
-        if clean_text:
-            memory_engine.archive(f"User: {query} | Serqet: {clean_text}", {"session_id": session_id})
+    
+        if agent.name == "arbiter" and not action:
+            print("[BRAIN] ArBiter missed tool call. Forcing auto-extraction...")
+            extraction_prompt = f"Extract business JSON from this text. Keys: name, category, strategy, projected_roi, platform. TEXT: {clean_text}"
+            ext_res = get_llm("gemini").invoke(extraction_prompt)
+            try:
+                import json
+                raw_json = parse_content(ext_res.content).replace('```json', '').replace('```', '').strip()
+                structured_data = json.loads(raw_json)
+                return {
+                    "messages": [AIMessage(content=clean_text)], 
+                    "action": "execute_launch_venture", 
+                    "tool_data": structured_data
+                }
+            except:
+                print("[BRAIN] Extraction failed. Returning raw text.")
+
+
+            if clean_text:
+                memory_engine.archive(f"User: {query} | Serqet: {clean_text}", {"session_id": session_id})
 
         return {"messages": [AIMessage(content=clean_text)], "action": action}
+        
+        # if clean_text:
+        #     memory_engine.archive(f"User: {query} | Serqet: {clean_text}", {"session_id": session_id})
+
+        # return {"messages": [AIMessage(content=clean_text)], "action": action}
 
     except Exception as e:
         print(f"!!! [ BRAIN PANIC]: {e} !!!")

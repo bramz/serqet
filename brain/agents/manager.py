@@ -2,7 +2,10 @@ from .base import SerqetAgent
 
 class ManagerAgent(SerqetAgent):
     name = "manager"
-    allowed_tools = ["web_research", "get_portfolio_summary"]
+    allowed_tools = [
+        "web_research",
+        "get_portfolio_summary"
+    ]
     system_prompt = """You are the Serqet Executive Manager. 
         Your goal is to maximize the user's productivity and maintain life-data integrity.
         
