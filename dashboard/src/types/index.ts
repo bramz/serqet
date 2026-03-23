@@ -6,6 +6,7 @@ export interface Module {
 }
 
 export interface ChatMessage {
+  image?: string | Blob | undefined;
   role: 'user' | 'serqet' | 'error';
   text: string;
 }
@@ -15,3 +16,4 @@ export interface IntentResponse {
   message: string;
   action?: string;
 }
+

@@ -14,7 +14,7 @@ type BrainResponse struct {
 	Data    map[string]interface{} `json:"data"`
 }
 
-func RequestIntent(userID string, query string, history []models.ChatHistory) (*BrainResponse, error) {
+func RequestIntent(userID string, query string, filePath string, history []models.ChatHistory) (*BrainResponse, error) {
 	// Map DB history to the Brain's expected format
 	var brainHistory []map[string]string
 	for _, h := range history {
@@ -24,6 +24,7 @@ func RequestIntent(userID string, query string, history []models.ChatHistory) (*
 	payload, _ := json.Marshal(map[string]interface{}{
 		"user_id": userID,
 		"query":   query,
+		"file_path": filePath,
 		"history": brainHistory,
 	})
 	log.Printf("Sending intent request to Brain with payload: %s\n", string(payload))
