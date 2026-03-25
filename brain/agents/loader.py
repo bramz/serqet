@@ -5,6 +5,7 @@ from .tasks import TasksAgent
 from .base import SerqetAgent
 from .manager import ManagerAgent
 from .arbiter import ArbiterAgent
+from .jobs import JobAgent
 
 AGENT_MAP = {
     "research": ResearchAgent(),
@@ -13,6 +14,7 @@ AGENT_MAP = {
     "tasks": TasksAgent(),
     "manager": ManagerAgent(),
     "arbiter": ArbiterAgent(),
+    "jobs": JobAgent()
 }
 
 def get_agent_for_intent(query: str) -> SerqetAgent:
