@@ -24,13 +24,18 @@ def agent_node(state: AgentState):
     agent = get_agent_for_intent(query)
     print(f" [BRAIN] Specialist: {agent.name} | Session: {session_id} ")
 
+    voice_hint = ""
+    if file_path and file_path.lower().endswith(('.webm', '.mp3', '.wav')):
+        voice_hint = "\nIMPORTANT: This is a VOCAL COMMAND. Listen to the audio and act as the most appropriate specialist (Finance, Health, Jobs, or Research)."
+
+
     # allowed tools
     allowed_tools = [t for t in ALL_TOOLS if t.name in agent.allowed_tools]
     llm = get_llm("gemini")
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm
     
     try:
-        sys_prompt = f"{agent.get_system_prompt()}\n\nLIFETIME CONTEXT:\n{context or 'None'}"
+        sys_prompt = f"{agent.get_system_prompt()}{voice_hint}\n\nLIFETIME CONTEXT:\n{context or 'None'}"
         prompt_stack = [SystemMessage(content=sys_prompt)]
         prompt_stack.extend(state["messages"][:-1])
 

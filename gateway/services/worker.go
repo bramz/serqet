@@ -31,7 +31,7 @@ func StartAutonomousAnalyst() {
 				
 				query := fmt.Sprintf("System Market Analysis: %s", pair)
 				
-				RequestIntent("SYSTEM_BOT", query, "", nil) 
+				RequestIntent("SYSTEM_BOT", query, "", "", nil) 
                 // Note: expand RequestIntent to accept a 'data' payload 
                 // to avoid sending 500 candles as text
 			}

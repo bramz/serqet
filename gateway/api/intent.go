@@ -26,7 +26,7 @@ func HandleIntent(c fiber.Ctx) error {
 
 	services.EmitEvent("BRAIN", "Processing intent for session: "+body.SessionID, "INFO")
 
-	brainRes, err := services.RequestIntent(body.UserID, body.Query, body.FilePath, history)
+	brainRes, err := services.RequestIntent(body.UserID, body.SessionID, body.Query, body.FilePath, history)
 	if err != nil {
 		services.EmitEvent("BRAIN", "Neural Link timeout or failure", "ERROR")
 		return c.Status(502).JSON(fiber.Map{"error": "Brain offline"})
@@ -68,6 +68,7 @@ func HandleIntent(c fiber.Ctx) error {
 		Role:      "serqet", 
 		Text:      brainRes.Message,
 		FilePath:  body.WebURL,
+		AudioURL:  brainRes.AudioURL,
 	})
 
 	return c.JSON(brainRes)

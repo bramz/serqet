@@ -32,7 +32,10 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Hardware Refs
   const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const audioStream = useRef<MediaStream | null>(null); // Track the active mic stream
   const audioChunks = useRef<Blob[]>([]);
   const audioCtx = useRef<AudioContext | null>(null);
   const analyser = useRef<AnalyserNode | null>(null);
@@ -47,7 +50,6 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
   // --- AUTO-PLAY SERQET VOICE ---
   useEffect(() => {
     const lastMsg = history[history.length - 1];
-    // Check if the message has an audio URL provided by the Brain
     if (lastMsg?.role === 'serqet' && (lastMsg as any).audio_url) {
       const audio = new Audio((lastMsg as any).audio_url);
       audio.play().catch(e => console.error("Auto-play blocked:", e));
@@ -56,8 +58,11 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
 
   // --- VOICE RECORDING LOGIC ---
   const startRecording = async () => {
+    if (isRecording) return; // Prevent double-triggering
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStream.current = stream;
       
       // Setup Visualizer
       audioCtx.current = new AudioContext();
@@ -67,8 +72,9 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
       analyser.current.fftSize = 64;
       
       const updateLevel = () => {
-        const dataArray = new Uint8Array(analyser.current!.frequencyBinCount);
-        analyser.current!.getByteFrequencyData(dataArray);
+        if (!analyser.current) return;
+        const dataArray = new Uint8Array(analyser.current.frequencyBinCount);
+        analyser.current.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b) / dataArray.length;
         setAudioLevel(avg);
         animationRef.current = requestAnimationFrame(updateLevel);
@@ -78,11 +84,16 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
       // Setup Recorder
       mediaRecorder.current = new MediaRecorder(stream);
       audioChunks.current = [];
-      mediaRecorder.current.ondataavailable = (e) => audioChunks.current.push(e.data);
+      mediaRecorder.current.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.current.push(e.data);
+      };
+
       mediaRecorder.current.onstop = () => {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        const file = new File([audioBlob], "voice_command.webm", { type: 'audio/webm' });
-        onSend("Audio Command Received.", file);
+        if (audioChunks.current.length > 0) {
+          const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+          const file = new File([audioBlob], "voice_command.webm", { type: 'audio/webm' });
+          onSend("Vocal Command Received.", file);
+        }
       };
 
       mediaRecorder.current.start();
@@ -93,13 +104,28 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder.current) mediaRecorder.current.stop();
+  // --- STOP RECORDING (STABILIZED) ---
+  const stopRecording = useCallback(() => {
+    if (!isRecording) return;
+
+    // 1. Stop Recorder
+    if (mediaRecorder.current && mediaRecorder.current.state !== "inactive") {
+      mediaRecorder.current.stop();
+    }
+
+    // 2. Kill Hardware Tracks (This removes the "recording" icon in browser tab)
+    if (audioStream.current) {
+      audioStream.current.getTracks().forEach(track => track.stop());
+      audioStream.current = null;
+    }
+
+    // 3. Stop Visualizer
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    audioCtx.current?.close();
+    if (audioCtx.current) audioCtx.current.close();
+    
     setIsRecording(false);
     setAudioLevel(0);
-  };
+  }, [isRecording]);
 
   const handleFileAction = (file: File) => {
     setSelectedFile(file);
@@ -125,6 +151,9 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
         mode === 'full' ? 'bg-zinc-950' : 'bg-zinc-950/90 backdrop-blur-3xl border-t border-white/5'
       }`}
       style={{ marginLeft: mode === 'full' ? '0' : 'var(--sidebar-width)' }}
+      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files?.[0]) handleFileAction(e.dataTransfer.files[0]); }}
     >
       <div className="max-w-6xl mx-auto h-full flex flex-col relative">
         
@@ -134,26 +163,26 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
             <div className="flex items-center gap-2">
                <div className={`h-1.5 w-1.5 rounded-full ${loading || isRecording ? 'bg-primary animate-pulse' : 'bg-zinc-700'}`} />
                <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase">
-                 {isRecording ? "Listening..." : loading ? "Thinking..." : "Serqet Kernel Terminal"}
+                 {isRecording ? "Listening..." : loading ? "Neural Link Active" : "Serqet Kernel Terminal"}
                </span>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setMode('collapsed')} className={`p-2 rounded-lg ${mode === 'collapsed' ? 'text-primary' : 'text-zinc-600'}`}><ChevronDown size={16}/></button>
-            <button onClick={() => setMode('half')} className={`p-2 rounded-lg ${mode === 'half' ? 'text-primary' : 'text-zinc-600'}`}><Square size={14}/></button>
-            <button onClick={() => setMode('full')} className={`p-2 rounded-lg ${mode === 'full' ? 'text-primary' : 'text-zinc-600'}`}><Maximize2 size={14}/></button>
+            <button onClick={() => setMode('collapsed')} className={`p-2 rounded-lg ${mode === 'collapsed' ? 'text-primary' : 'text-zinc-600'}`} title="Collapse"><ChevronDown size={16}/></button>
+            <button onClick={() => setMode('half')} className={`p-2 rounded-lg ${mode === 'half' ? 'text-primary' : 'text-zinc-600'}`} title="Half Screen"><Square size={14}/></button>
+            <button onClick={() => setMode('full')} className={`p-2 rounded-lg ${mode === 'full' ? 'text-primary' : 'text-zinc-600'}`} title="Full Screen"><Maximize2 size={14}/></button>
           </div>
         </div>
 
         {/* --- STREAM --- */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-10 py-6 space-y-8 scrollbar-hide">
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {mode !== 'collapsed' && history.map((msg: any, i: number) => (
               <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] p-5 rounded-3xl text-sm leading-relaxed ${msg.role === 'user' ? 'bg-zinc-900 border border-white/5 text-zinc-100' : 'bg-primary/5 border border-primary/20 text-zinc-200'}`}>
                   {msg.image && <img src={msg.image} className="mb-4 rounded-xl max-h-96 object-contain mx-auto" />}
-                  <div className="prose prose-invert prose-sm max-w-none text-zinc-200">
+                  <div className="prose prose-invert prose-sm max-w-none text-zinc-200 prose-p:leading-relaxed prose-strong:text-primary">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
                   </div>
                   {msg.role === 'serqet' && (msg as any).audio_url && (
@@ -174,10 +203,10 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
           <AnimatePresence>
             {isRecording && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center justify-center gap-1.5 mb-6 h-10">
-                {[...Array(16)].map((_, i) => (
+                {[...Array(24)].map((_, i) => (
                   <motion.div
                     key={i}
-                    animate={{ height: `${Math.max(15, Math.random() * audioLevel * 2)}%` }}
+                    animate={{ height: `${Math.max(15, Math.random() * audioLevel * 3)}%` }}
                     className="w-1.5 bg-primary rounded-full shadow-[0_0_15px_oklch(0.627_0.265_303.9_/_0.5)]"
                   />
                 ))}
@@ -207,15 +236,18 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
               />
               
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {/* MIC BUTTON WITH IMPROVED HANDLERS */}
                 <button 
                   type="button"
                   onMouseDown={startRecording}
                   onMouseUp={stopRecording}
-                  className={`p-2.5 rounded-xl transition-all ${isRecording ? 'text-white bg-red-500 animate-pulse' : 'text-zinc-600 hover:text-primary hover:bg-primary/10'}`}
+                  onMouseLeave={stopRecording} // Crucial: stops if mouse drags away
+                  className={`p-2.5 rounded-xl transition-all ${isRecording ? 'text-white bg-red-500 animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'text-zinc-600 hover:text-primary hover:bg-primary/10'}`}
                 >
                   {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
                 </button>
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-zinc-600 hover:text-primary hover:bg-primary/10 rounded-xl">
+                
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 text-zinc-600 hover:text-primary hover:bg-primary/10 rounded-xl transition-all">
                   <Paperclip size={20} />
                 </button>
                 <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => e.target.files?.[0] && handleFileAction(e.target.files[0])} />
