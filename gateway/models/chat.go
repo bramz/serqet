@@ -16,4 +16,5 @@ type ChatHistory struct {
 	Role      string `json:"role"`
 	Text      string `json:"text"`
 	FilePath  string `json:"file_path"`
+	AudioURL  string `json:"audio_url"`
 }
