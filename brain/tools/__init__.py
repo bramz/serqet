@@ -25,12 +25,12 @@ ALL_TOOLS = [
     analyze_net_worth,
     analyze_technical_indicators,
     generate_trading_signal,
+    launch_venture,
     create_task,
     track_job_application,
     record_meal,
     record_workout,
     web_research,
     analyze_niche_profitability,
-    scout_business_niche,
-    launch_venture
+    scout_business_niche
 ]

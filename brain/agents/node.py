@@ -34,17 +34,25 @@ def agent_node(state: AgentState):
         prompt_stack = [SystemMessage(content=sys_prompt)]
         prompt_stack.extend(state["messages"][:-1])
 
-        # handle current message txt v img
-        if file_path and file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-            print(f" [VISION] Ingesting visual data: {file_path} ")
-            b64_img = encode_image(file_path)
-            multimodal_msg = HumanMessage(content=[
-                {"type": "text", "text": query},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_img}"}}
-            ])
-            prompt_stack.append(multimodal_msg)
-        else:
-            prompt_stack.append(state["messages"][-1])
+        if file_path and os.path.exists(file_path):
+            ext = os.path.splitext(file_path)[1].lower()
+            b64_data = encode_image(file_path)
+            
+            content_parts = [{"type": "text", "text": query}]
+
+            if ext in [".wav", ".mp3", ".webm", ".ogg"]:
+                print(f"[AUDIO] Ingesting Audio for Gemini: {file_path}")
+                content_parts.append({
+                    "type": "media", 
+                    "mime_type": f"audio/{ext[1:] if ext != '.webm' else 'webm'}", 
+                    "data": b64_data
+                })
+            elif ext == ".pdf":
+                content_parts.append({"type": "media", "mime_type": "application/pdf", "data": b64_data})
+            else:
+                content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_data}"}})
+            
+            prompt_stack.append(HumanMessage(content=content_parts))
 
         response = llm_with_tools.invoke(prompt_stack)
         
@@ -58,18 +66,7 @@ def agent_node(state: AgentState):
             
             if target_func:
                 tool_output = target_func.invoke(tool_args)
-                
-                if tool_name == "launch_venture":
-                    print(" [HANDSHAKE] Arbiter Success. Handing to Tasks Agent for Roadmap ")
-                    state["messages"].append(response)
-                    state["messages"].append(HumanMessage(content=(
-                        f"Venture '{tool_output.get('name')}' has been indexed. "
-                        f"As the Tasks Agent, generate a 5-step implementation roadmap for this venture now."
-                    )))
-
-                    # clear file_path for the recursive turn to avoid re-processing image
-                    state["file_path"] = None 
-                    return agent_node(state)
+                # state["file_path"] = None
 
                 if "rsi" in tool_output:
                     print(f" [BRAIN] Indicators computed. Chaining to decision logic ")

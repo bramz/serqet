@@ -15,6 +15,7 @@ func HandleIntent(c fiber.Ctx) error {
 		SessionID string `json:"session_id"`
 		Query     string `json:"query"`
 		FilePath  string `json:"file_path,omitempty"`
+		WebURL    string `json:"web_url"`
 	}
 	c.Bind().JSON(&body)
 
@@ -47,7 +48,7 @@ func HandleIntent(c fiber.Ctx) error {
 		SessionID: body.SessionID, 
 		Role:      "user", 
 		Text:      body.Query,
-		FilePath:  body.FilePath,
+		FilePath:  body.WebURL,
 	})
 
 	if brainRes.Action != "" {
@@ -66,7 +67,7 @@ func HandleIntent(c fiber.Ctx) error {
 		SessionID: body.SessionID, 
 		Role:      "serqet", 
 		Text:      brainRes.Message,
-		FilePath:  body.FilePath,
+		FilePath:  body.WebURL,
 	})
 
 	return c.JSON(brainRes)
