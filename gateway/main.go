@@ -4,6 +4,7 @@ import (
 	"gateway/api"
 	"gateway/db"
 	"gateway/services"
+	"gateway/models"
 	"log"
 
 	"github.com/gofiber/fiber/v3"
@@ -37,6 +38,8 @@ func main() {
 	v1.Delete("/sessions/:session_id", api.DeleteSession)
 	v1.Get("/history/:session_id", api.GetSessionHistory)
 
+	v1.Get("/agents", api.GetAgents)
+    v1.Patch("/agents/:slug", api.UpdateAgentPrompt)
 	
 	v1.Get("/overview", api.GetOverviewSnapshot)
 	v1.Post("/intent", api.HandleIntent)
@@ -67,4 +70,18 @@ func main() {
 
 
 	log.Fatal(app.Listen(":8001"))
+}
+
+func seedAgents() {
+    agents := []models.AgentConfig{
+        {Slug: "researcher", Name: "Intelligence Specialist", SystemPrompt: "You are the Serqet Research Specialist..."},
+        {Slug: "finance", Name: "Wealth Manager", SystemPrompt: "You are the Serqet Wealth Manager..."},
+        {Slug: "arbiter", Name: "Revenue Arbiter", SystemPrompt: "You are the Serqet Venture Arbiter..."},
+        {Slug: "jobs", Name: "Career Specialist", SystemPrompt: "You are the Serqet Job Agent..."},
+    }
+
+    for _, a := range agents {
+        // Only create if it doesn't exist
+        db.Instance.Where(models.AgentConfig{Slug: a.Slug}).FirstOrCreate(&a)
+    }
 }

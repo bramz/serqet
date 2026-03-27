@@ -30,8 +30,9 @@ func Connect() error {
 		&models.SystemEvent{},
 		&models.RevenueCampaign{},
 		&models.VentureCampaign{},
-	
+		&models.AgentConfig{},
 	)
+
 	Instance = db
 	return nil
 }
