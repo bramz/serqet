@@ -37,6 +37,8 @@ func main() {
 	v1.Delete("/sessions/:session_id", api.DeleteSession)
 	v1.Get("/history/:session_id", api.GetSessionHistory)
 
+	v1.Get("/agents", api.GetAgents)
+    v1.Patch("/agents/:slug", api.UpdateAgentPrompt)
 	
 	v1.Get("/overview", api.GetOverviewSnapshot)
 	v1.Post("/intent", api.HandleIntent)

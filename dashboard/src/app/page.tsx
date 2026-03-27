@@ -11,6 +11,7 @@ import { JobModule } from "@/components/modules/JobModule";
 import { TaskModule } from "@/components/modules/TaskModule";
 import { HealthModule } from "@/components/modules/HealthModule";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { SettingsModule } from "@/components/modules/SettingsModule";
 
 // Define the available modes
 export type TerminalMode = 'collapsed' | 'half' | 'full';
@@ -19,16 +20,27 @@ export default function Home() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [activeSessionId, setActiveSessionId] = useState<string>("default");
-  
-  // Tri-state terminal control
   const [terminalMode, setTerminalMode] = useState<TerminalMode>('collapsed');
 
+  useEffect(() => {
+    const savedSession = localStorage.getItem("serqet_active_session");
+    if (savedSession) {
+      setActiveSessionId(savedSession);
+    }
+  }, []);
+
+  const handleSessionChange = (id: string) => {
+    setActiveSessionId(id);
+    localStorage.setItem("serqet_active_session", id);
+  };
+
   const { chatHistory, askSerqet, loading } = useSerqet(activeSessionId, (action) => {
-    if (action.startsWith("view_")) setActiveTab(action.replace("view_", ""));
+    if (action.startsWith("view_")) {
+      setActiveTab(action.replace("view_", ""));
+    }
   });
 
   const executeCommand = useCallback((query: string, file?: File | null) => {
-    // Auto-open to half-screen when a command is triggered
     setTerminalMode('half'); 
     askSerqet(query, file);
   }, [askSerqet]);
@@ -42,7 +54,8 @@ export default function Home() {
         isCollapsed={isSidebarCollapsed} 
         setIsCollapsed={setIsSidebarCollapsed} 
         activeSessionId={activeSessionId}
-        onSessionSelect={setActiveSessionId}
+        onSessionSelect={handleSessionChange}
+        onNavigate={(tab: string) => setActiveTab(tab)}
       />
       
       <main className="flex-1 relative flex flex-col min-w-0">
@@ -56,6 +69,16 @@ export default function Home() {
           {activeTab === "job" && <JobModule />}
           {activeTab === "task" && <TaskModule />}
           {activeTab === "health" && <HealthModule />}
+          {activeTab === "settings" && <SettingsModule />}
+
+          {activeTab !== "overview" && (
+            <button 
+              onClick={() => setActiveTab("overview")}
+              className="fixed top-6 right-6 px-4 py-2 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-full text-[10px] font-black tracking-widest text-zinc-500 hover:text-primary transition-all z-40"
+            >
+              ← RETURN TO DASHBOARD
+            </button>
+          )}
         </div>
 
         <ChatInterface 
