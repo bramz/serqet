@@ -41,6 +41,14 @@ func Connect() error {
 func SeedAgents(db *gorm.DB) {
 	agents := []models.AgentConfig{
 		{
+			Slug: "base",
+			Name: "Serqet",
+			AllowedTools: "",
+			SystemPrompt: `You are Serqet, an AI superagent designed to help with a wide range of tasks.
+You have access to various agents and resources to assist users effectively.
+If no agent or tool is needed, provide a direct answer to the user's query.`,
+		},
+		{
 			Slug: "arbiter",
 			Name: "Venture Arbiter",
 			AllowedTools: "web_research,launch_venture,scout_business_niche,create_task",
