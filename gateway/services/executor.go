@@ -210,6 +210,35 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 
 			return fmt.Sprintf("Profit of $%.2f realized and indexed.", amount), "view_finance"
+
+
+		case "execute_db_save_knowledge":
+			node := models.KnowledgeNode{
+				Topic: utils.SafeString(data, "topic"),
+				Content: utils.SafeString(data, "content"),
+				Tags: utils.SafeString(data, "tags"),
+			}
+			db.Instance.Create(&node)
+			return "Knowledge node indexed.", "view_overview"
+
+		case "execute_db_log_security":
+			audit := models.SecurityAudit{
+				Issue: utils.SafeString(data, "issue"),
+				Severity: utils.SafeString(data, "severity"),
+				Status: "Open",
+			}
+			db.Instance.Create(&audit)
+			return "Security vulnerability flagged.", "view_overview"
+
+		case "execute_db_save_code":
+			snip := models.CodeSnippet{
+				FileName: utils.SafeString(data, "file_name"),
+				Language: utils.SafeString(data, "language"),
+				Code: utils.SafeString(data, "code"),
+				Description: utils.SafeString(data, "description"),
+			}
+			db.Instance.Create(&snip)
+			return "Automation logic archived by Builder.", "view_overview"
 		}
 
 	return "", ""

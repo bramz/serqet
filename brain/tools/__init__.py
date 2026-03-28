@@ -14,6 +14,9 @@ from .jobs import track_job_application
 from .health import record_meal, record_workout
 from .research import web_research
 from .arbiter import analyze_niche_profitability, scout_business_niche, launch_venture
+from .code import document_code_logic
+from .security import log_security_issue
+from .oracle import archive_knowledge_node
 
 ALL_TOOLS = [
     create_social_draft,
@@ -32,5 +35,8 @@ ALL_TOOLS = [
     record_workout,
     web_research,
     analyze_niche_profitability,
-    scout_business_niche
+    scout_business_niche,
+    document_code_logic,
+    log_security_issue,
+    archive_knowledge_node
 ]
