@@ -155,7 +155,7 @@ export function Sidebar({
   return (
     <>
     <motion.aside 
-      animate={{ width: isCollapsed ? '72px' : '300px' }}
+      animate={{ width: isCollapsed ? '72px' : '280px' }}
       className="h-screen bg-zinc-950 border-r border-zinc-900 flex flex-col relative z-50 shadow-2xl"
     >
       {/* --- TOGGLE --- */}
