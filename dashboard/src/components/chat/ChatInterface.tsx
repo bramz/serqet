@@ -7,7 +7,8 @@ import remarkGfm from 'remark-gfm';
 import { 
   Terminal, X, Paperclip, Cpu, Zap, Mic, MicOff,
   Maximize2, Minimize2, ChevronDown, ChevronUp,
-  Square, Volume2
+  Square, Volume2,
+  VolumeX
 } from "lucide-react";
 import { ChatMessage } from '@/types';
 import { TerminalMode } from '@/app/page';
@@ -42,19 +43,25 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
   const animationRef = useRef<number | null>(null);
 
   const heightMap = { collapsed: '72px', half: '550px', full: '100vh' };
+  const [isMuted, setIsMuted] = useState(false);
+
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [history, mode]);
 
   // --- AUTO-PLAY SERQET VOICE ---
-  useEffect(() => {
-    const lastMsg = history[history.length - 1];
-    if (lastMsg?.role === 'serqet' && (lastMsg as any).audio_url) {
-      const audio = new Audio((lastMsg as any).audio_url);
-      audio.play().catch(e => console.error("Auto-play blocked:", e));
-    }
-  }, [history]);
+useEffect(() => {
+  const lastMsg = history[history.length - 1];
+  if (lastMsg?.role === 'serqet' && lastMsg.audio_url && !isMuted) {
+    const audio = new Audio(lastMsg.audio_url);
+    
+    // Attempt to play and catch the error silently if the user hasn't interacted yet
+    audio.play().catch(e => {
+      console.warn("Autoplay blocked. User must interact first.");
+    });
+  }
+}, [history, isMuted]);
 
   // --- VOICE RECORDING LOGIC ---
   const startRecording = async () => {
@@ -169,9 +176,16 @@ export const ChatInterface = memo(({ history, onSend, loading, mode, setMode }: 
           </div>
 
           <div className="flex items-center gap-1">
-            <button onClick={() => setMode('collapsed')} className={`p-2 rounded-lg ${mode === 'collapsed' ? 'text-primary' : 'text-zinc-600'}`} title="Collapse"><ChevronDown size={16}/></button>
-            <button onClick={() => setMode('half')} className={`p-2 rounded-lg ${mode === 'half' ? 'text-primary' : 'text-zinc-600'}`} title="Half Screen"><Square size={14}/></button>
-            <button onClick={() => setMode('full')} className={`p-2 rounded-lg ${mode === 'full' ? 'text-primary' : 'text-zinc-600'}`} title="Full Screen"><Maximize2 size={14}/></button>
+            <button onClick={() => setMode('collapsed')} className={`p-2 rounded-lg ${mode === 'collapsed' ? 'text-white' : 'text-zinc-400'}`} title="Collapse"><ChevronDown size={16}/></button>
+            <button onClick={() => setMode('half')} className={`p-2 rounded-lg ${mode === 'half' ? 'text-white' : 'text-zinc-400'}`} title="Half Screen"><Square size={14}/></button>
+            <button onClick={() => setMode('full')} className={`p-2 rounded-lg ${mode === 'full' ? 'text-white' : 'text-zinc-400'}`} title="Full Screen"><Maximize2 size={14}/></button>
+            <button 
+              onClick={() => setIsMuted(!isMuted)} 
+              className={`p-2 rounded-lg transition-colors ${isMuted ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:text-white'}`}
+              title={isMuted ? "Enable Voice" : "Mute Voice"}
+            >
+              {isMuted ? <VolumeX size={16}/> : <Volume2 size={16}/>}
+            </button>   
           </div>
         </div>
 
