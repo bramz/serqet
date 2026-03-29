@@ -20,7 +20,6 @@ export function useSerqet(activeSessionId: string, onAction: (action: string) =>
     return `${baseUrl}${cleanPath}`;
   };
 
-  // --- PERSISTENCE: Load and Sanitize History ---
   useEffect(() => {
     if (!activeSessionId) return;
 

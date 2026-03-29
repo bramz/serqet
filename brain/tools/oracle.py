@@ -1,4 +1,5 @@
 from langchain_core.tools import tool
+from typing import Dict, Any
 
 @tool
 def archive_knowledge_node(topic: str, content: str, tags: str = "") -> Dict[str, Any]:
