@@ -21,7 +21,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go services.StartAutonomousAnalyst() 
+	// go services.StartAutonomousAnalyst() 
+	go services.StartBrainHeartbeat()
 
 	app := fiber.New()
 	app.Use(cors.New())

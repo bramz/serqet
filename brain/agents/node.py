@@ -16,6 +16,7 @@ TOOL_MAP = {t.name: t for t in ALL_TOOLS}
 
 def agent_node(state: AgentState):
     query = state["messages"][-1].content
+    user_id = state.get("user_id", "user")
     session_id = state.get("session_id", "default")
     file_path = state.get("file_path")
     
@@ -35,7 +36,15 @@ def agent_node(state: AgentState):
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm
     
     try:
-        sys_prompt = f"{agent.get_system_prompt()}{voice_hint}\n\nLIFETIME CONTEXT:\n{context or 'None'}"
+        system_modifier = ""
+        if user_id == "SYSTEM_CORE":
+            system_modifier = "\n\nCRITICAL: You are running in AUTONOMOUS MODE. Be extremely concise. " \
+                            "Execute tools immediately without asking for permission. " \
+                            "Summarize results as a system log entry."
+            sys_prompt = f"{agent.get_system_prompt()}{system_modifier}\n\nCONTEXT:\n{memory_engine.recall(query, state['session_id'])}"
+        else:
+            sys_prompt = f"{agent.get_system_prompt()}{voice_hint}\n\nCONTEXT:\n{context or 'None'}"
+            
         prompt_stack = [SystemMessage(content=sys_prompt)]
         prompt_stack.extend(state["messages"][:-1])
 

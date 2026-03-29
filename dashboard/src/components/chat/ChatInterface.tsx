@@ -170,7 +170,7 @@ useEffect(() => {
             <div className="flex items-center gap-2">
                <div className={`h-1.5 w-1.5 rounded-full ${loading || isRecording ? 'bg-primary animate-pulse' : 'bg-zinc-700'}`} />
                <span className="text-[10px] font-black tracking-widest text-zinc-500 uppercase">
-                 {isRecording ? "Listening..." : loading ? "Neural Link Active" : "Serqet Kernel Terminal"}
+                 {isRecording ? "Listening..." : loading ? "Brain Link Active" : "Terminal"}
                </span>
             </div>
           </div>
