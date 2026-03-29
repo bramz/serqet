@@ -135,3 +135,52 @@
   animation: serqet-pulse 4s infinite ease-in-out;
   border: 1px solid rgba(168, 85, 247, 0.5);
 }
+
+
+/* ... existing globals.css ... */
+
+/* --- NEURAL THEME: MATRIX --- */
+.theme-matrix {
+  --background: oklch(0.1 0 0); /* Pure Black */
+  --foreground: oklch(0.85 0.25 145); /* Phosphorus Green */
+  --primary: oklch(0.85 0.25 145);
+  --primary-foreground: oklch(0.1 0 0);
+  --border: oklch(0.85 0.25 145 / 0.2);
+  --card: oklch(0.12 0.02 145);
+  --secondary: oklch(0.2 0.05 145);
+  
+  /* Matrix Glow specific override */
+  --sidebar: oklch(0.05 0 0);
+}
+
+/* Optional Matrix Scanline Effect */
+.theme-matrix::before {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 255, 65, 0.03) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.01));
+  z-index: 9999;
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
+}
+
+/* Pulsing text effect for Matrix */
+.theme-matrix .matrix-text {
+  text-shadow: 0 0 8px oklch(0.85 0.25 145 / 0.5);
+}
+
+.theme-amber {
+  --primary: oklch(0.769 0.188 70.08); /* Fallout Amber */
+  --background: oklch(0.1 0.02 70);
+  --border: oklch(0.769 0.188 70 / 0.2);
+}
+
+.theme-cyan {
+  --primary: oklch(0.7 0.2 200); /* High-tech Cyan */
+  --background: oklch(0.1 0.02 200);
+}
