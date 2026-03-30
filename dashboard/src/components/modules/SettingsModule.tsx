@@ -6,9 +6,8 @@ import { Card } from "@/components/ui/card";
 import { 
   BrainCircuit, Save, RotateCcw, ShieldCheck, 
   Database, Cpu, Key, Palette, Sliders, 
-  Eye, EyeOff, RefreshCw, Wrench, Fingerprint,
-  Terminal, ShieldAlert, Monitor, Zap,
-  Activity
+  Eye, RefreshCw, Wrench, Fingerprint,
+  Monitor, Zap, Activity, HardDrive, ShieldAlert
 } from "lucide-react";
 import { GATEWAY_URL } from '@/lib/constants';
 
@@ -26,17 +25,19 @@ export function SettingsModule() {
   // --- THEME ENGINE ---
   const applyTheme = useCallback((themeName: string) => {
     const themes = ['dark', 'theme-matrix', 'theme-amber', 'theme-cyan'];
-    document.body.classList.remove(...themes);
-    document.body.classList.add(themeName);
+    const root = window.document.documentElement;
+    root.classList.remove(...themes);
+    root.classList.add(themeName);
     setCurrentTheme(themeName);
     localStorage.setItem('serqet_theme', themeName);
   }, []);
 
+  // Initialize data and sync theme state
   useEffect(() => {
     const savedTheme = localStorage.getItem('serqet_theme') || 'dark';
-    applyTheme(savedTheme);
+    setCurrentTheme(savedTheme);
     fetchAgents();
-  }, [applyTheme]);
+  }, []);
 
   const fetchAgents = async () => {
     try {
@@ -44,11 +45,15 @@ export function SettingsModule() {
       const data = await res.json();
       setAgents(data);
       if (data.length > 0 && !selectedAgent) {
-        setSelectedAgent(data[0]);
-        setPrompt(data[0].system_prompt);
-        setTools(data[0].allowed_tools);
+        handleSelectAgent(data[0]);
       }
     } catch (e) { console.error("Agent fetch failed", e); }
+  };
+
+  const handleSelectAgent = (agent: any) => {
+    setSelectedAgent(agent);
+    setPrompt(agent.system_prompt);
+    setTools(agent.allowed_tools);
   };
 
   const handleSaveDNA = async () => {
@@ -66,12 +71,12 @@ export function SettingsModule() {
   };
 
   return (
-    <div className="animate-in fade-in duration-700 space-y-8 max-w-7xl mx-auto pb-40 px-4 font-sans">
-      {/* --- HEADER --- */}
+    <div className="animate-in fade-in duration-700 space-y-8 max-w-7xl mx-auto pb-40 px-4">
+      {/* --- MODULE HEADER --- */}
       <div className="flex justify-between items-end border-b border-zinc-800 pb-6">
         <div>
-          <h2 className="text-5xl font-black italic tracking-tighter text-white uppercase">Settings<span className="text-primary"></span></h2>
-          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mt-2">Configuration Interface</p>
+          <h2 className="text-5xl font-black italic tracking-tighter text-white uppercase">System<span className="text-primary">/BIOS</span></h2>
+          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.3em] mt-2">Kernel level configuration & Neural sequencing</p>
         </div>
         <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800 shadow-2xl">
           <NavTab active={activeTab === 'agents'} onClick={() => setActiveTab('agents')} icon={<BrainCircuit size={14}/>} label="Agents" />
@@ -82,13 +87,14 @@ export function SettingsModule() {
       </div>
 
       <div className="grid grid-cols-12 gap-8">
-        {/* --- LEFT CONTROL PANEL --- */}
+        
+        {/* --- LEFT SIDEBAR: TAB SPECIFIC CONTROLS --- */}
         <div className="col-span-12 lg:col-span-3 space-y-6">
           {activeTab === 'agents' && (
             <div className="space-y-2">
               <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest px-2 mb-4 italic">Specialist Registry</p>
               {agents.map(a => (
-                <button key={a.slug} onClick={() => { setSelectedAgent(a); setPrompt(a.system_prompt); setTools(a.allowed_tools); }}
+                <button key={a.slug} onClick={() => handleSelectAgent(a)}
                   className={`w-full text-left p-4 rounded-2xl border transition-all ${selectedAgent?.slug === a.slug ? 'bg-primary/10 border-primary text-white' : 'bg-zinc-900/40 border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}>
                   <p className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-50">{a.slug}</p>
                   <p className="text-sm font-bold uppercase tracking-tight">{a.name}</p>
@@ -102,31 +108,33 @@ export function SettingsModule() {
               <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Active Skin</p>
               <div className="flex items-center gap-3">
                  <div className={`h-3 w-3 rounded-full bg-primary shadow-[0_0_10px_var(--primary)]`} />
-                 <span className="text-xs font-bold text-white uppercase tracking-tighter">{currentTheme.replace('theme-', '')} Protocol</span>
+                 <span className="text-xs font-bold text-white uppercase tracking-tighter">
+                   {currentTheme === 'dark' ? 'Standard' : currentTheme.replace('theme-', '')} Protocol
+                 </span>
               </div>
             </div>
           )}
 
-          <Card className="p-4 bg-zinc-950 border-zinc-900">
+          <Card className="p-4 bg-zinc-950 border-zinc-900 shadow-xl">
              <div className="flex items-center gap-2 text-zinc-500 mb-4">
                 <ShieldCheck size={14} />
                 <span className="text-[9px] font-black uppercase tracking-widest">Security Status</span>
              </div>
-             <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-tighter">Encryption: AES-256</p>
+             <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-tighter">Auth: RSA-4096</p>
              <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-tighter mt-1">Write Access: Verified</p>
           </Card>
         </div>
 
-        {/* --- MAIN CONFIGURATION WINDOW --- */}
+        {/* --- MAIN EDITOR WINDOW --- */}
         <div className="col-span-12 lg:col-span-9">
           
-          {/* TAB: AGENTS */}
+          {/* TAB: AGENT DNA EDITOR */}
           {activeTab === 'agents' && selectedAgent && (
             <Card className="bg-zinc-950 border-zinc-800 p-8 flex flex-col gap-8 shadow-2xl relative overflow-hidden">
               <div className="flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-3">
                    <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500"><ShieldCheck size={20} /></div>
-                   <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">Modifying [{selectedAgent.slug}] Neural Path</span>
+                   <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">Modifying [{selectedAgent.slug}] Agent</span>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setPrompt(selectedAgent.system_prompt); setTools(selectedAgent.allowed_tools); }} className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-500 hover:text-white transition-all"><RotateCcw size={18}/></button>
@@ -142,14 +150,14 @@ export function SettingsModule() {
                   <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} spellCheck={false} className="w-full h-80 bg-black border border-zinc-800 rounded-2xl p-6 font-mono text-xs leading-relaxed text-primary/80 focus:border-primary/50 outline-none shadow-inner resize-none scrollbar-hide" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2 ml-1"><Wrench size={12}/> Allowed Tooling (CSV)</label>
-                  <input value={tools} onChange={(e) => setTools(e.target.value)} className="w-full bg-black border border-zinc-800 rounded-xl p-4 font-mono text-[10px] text-primary outline-none" />
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest flex items-center gap-2 ml-1"><Wrench size={12}/>Tools & Skills</label>
+                  <input value={tools} onChange={(e) => setTools(e.target.value)} className="w-full bg-black border border-zinc-800 rounded-xl p-4 font-mono text-[10px] text-primary outline-none" placeholder="web_research, sync_portfolio..." />
                 </div>
               </div>
             </Card>
           )}
 
-          {/* TAB: INTERFACE (Matrix Theme) */}
+          {/* TAB: INTERFACE SETTINGS */}
           {activeTab === 'interface' && (
             <Card className="bg-zinc-950 border-zinc-800 p-8 space-y-12 shadow-2xl">
               <section className="space-y-6">
@@ -176,7 +184,7 @@ export function SettingsModule() {
                      <input type="range" className="w-full accent-primary h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
                   </div>
                   <div className="space-y-3">
-                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Pulse Intensity</p>
+                     <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Neural Pulse Intensity</p>
                      <input type="range" className="w-full accent-primary h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
                   </div>
                 </div>
@@ -184,47 +192,41 @@ export function SettingsModule() {
             </Card>
           )}
 
-          {/* TAB: ENGINE */}
+          {/* TAB: ENGINE CONFIG */}
           {activeTab === 'engine' && (
             <Card className="bg-zinc-950 border-zinc-800 p-8 space-y-12 shadow-2xl">
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-2 gap-12">
                 <section className="space-y-6">
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest italic flex items-center gap-2"><Zap size={16} className="text-primary"/> Model Config</h3>
-                  <EngineInput label="Core Intelligence" value="Gemini 3 Flash Preview" />
-                  <EngineInput label="Local Override" value="Llama 3.2 (Ollama)" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest italic flex items-center gap-2"><Zap size={16} className="text-primary"/> Model Parameters</h3>
+                  <EngineParam label="Core Reasoning" value="Gemini 3 Flash Preview" />
+                  <EngineParam label="Neural Fallback" value="Llama 3.2 (Ollama)" />
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase">Creativity Coefficient</label>
+                    <input type="range" className="w-full accent-primary bg-zinc-800 h-1 rounded-lg appearance-none" defaultValue={30} />
+                  </div>
                 </section>
                 <section className="space-y-6">
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest italic flex items-center gap-2"><Key size={16} className="text-primary"/> API Keys</h3>
-                  <div className="space-y-2">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest italic flex items-center gap-2"><Key size={16} className="text-primary"/> API Authentication</h3>
+                  <div className="space-y-3">
                     <ApiKeyRow label="GOOGLE_GEMINI" />
                     <ApiKeyRow label="KRAKEN_PRIVATE" />
+                    <ApiKeyRow label="ELEVENLABS_V2" />
                   </div>
                 </section>
               </div>
             </Card>
           )}
 
+          {/* TAB: MEMORY STATS */}
           {activeTab === 'memory' && (
              <Card className="bg-zinc-950 border-zinc-800 p-8 space-y-8 shadow-2xl">
                 <div className="grid grid-cols-3 gap-4">
-                   <div className="p-6 bg-black border border-zinc-900 rounded-3xl text-center">
-                      <Database className="mx-auto text-primary mb-2" size={24}/>
-                      <p className="text-[10px] font-black text-zinc-600 uppercase">Postgres</p>
-                      <p className="text-2xl font-black text-white">12.8k <span className="text-[10px] text-zinc-500">ROWS</span></p>
-                   </div>
-                   <div className="p-6 bg-black border border-zinc-900 rounded-3xl text-center">
-                      <BrainCircuit className="mx-auto text-cyan-500 mb-2" size={24}/>
-                      <p className="text-[10px] font-black text-zinc-600 uppercase">ChromaDB</p>
-                      <p className="text-2xl font-black text-white">1.4k <span className="text-[10px] text-zinc-500">VECTORS</span></p>
-                   </div>
-                   <div className="p-6 bg-black border border-zinc-900 rounded-3xl text-center">
-                      <Activity className="mx-auto text-emerald-500 mb-2" size={24}/>
-                      <p className="text-[10px] font-black text-zinc-600 uppercase">Hitrate</p>
-                      <p className="text-2xl font-black text-white">94<span className="text-[10px] text-zinc-500">%</span></p>
-                   </div>
+                   <StatBlock icon={<Database className="text-primary"/>} label="Postgres SQL" val="12.8k" unit="ROWS" />
+                   <StatBlock icon={<BrainCircuit className="text-cyan-500"/>} label="Chroma Vector" val="1.4k" unit="NODES" />
+                   <StatBlock icon={<Activity className="text-emerald-500"/>} label="Retrieval Accuracy" val="94" unit="%" />
                 </div>
                 <button className="w-full py-4 bg-red-500/5 border border-red-500/20 rounded-2xl text-[10px] font-black text-red-500 uppercase tracking-[0.4em] hover:bg-red-500 hover:text-white transition-all">
-                  Purge Volatile Memory Cache
+                  Purge Neural Context Cache
                 </button>
              </Card>
           )}
@@ -235,7 +237,7 @@ export function SettingsModule() {
   );
 }
 
-// --- BIOS HELPERS ---
+// --- BIOS COMPONENTS ---
 
 function NavTab({ active, onClick, icon, label }: any) {
   return (
@@ -257,9 +259,9 @@ function ThemeOption({ label, active, onClick, color, isMatrix }: any) {
 
 function ApiKeyRow({ label }: any) {
   return (
-    <div className="flex items-center justify-between p-3 bg-black border border-zinc-900 rounded-xl">
+    <div className="flex items-center justify-between p-3 bg-black border border-zinc-900 rounded-xl group">
       <span className="text-[9px] font-mono text-zinc-600 uppercase">{label}</span>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 opacity-30 group-hover:opacity-100 transition-opacity">
         <span className="text-xs text-zinc-800">••••••••••••</span>
         <button className="text-zinc-700 hover:text-white"><Eye size={12}/></button>
       </div>
@@ -267,11 +269,21 @@ function ApiKeyRow({ label }: any) {
   );
 }
 
-function EngineInput({ label, value }: any) {
+function EngineParam({ label, value }: any) {
   return (
     <div className="space-y-2">
       <p className="text-[10px] font-black text-zinc-600 uppercase ml-1">{label}</p>
       <div className="p-3 bg-black border border-zinc-900 rounded-xl text-[11px] font-mono text-primary/80">{value}</div>
+    </div>
+  );
+}
+
+function StatBlock({ icon, label, val, unit }: any) {
+  return (
+    <div className="p-6 bg-black border border-zinc-900 rounded-3xl text-center">
+       <div className="mb-2 flex justify-center">{icon}</div>
+       <p className="text-[10px] font-black text-zinc-600 uppercase">{label}</p>
+       <p className="text-2xl font-black text-white">{val} <span className="text-[10px] text-zinc-500">{unit}</span></p>
     </div>
   );
 }
