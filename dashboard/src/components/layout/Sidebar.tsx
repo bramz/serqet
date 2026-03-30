@@ -162,7 +162,7 @@ export function Sidebar({
         {!isCollapsed && (
           <div className="flex flex-col">
             <span className="font-black tracking-tighter text-xl uppercase italic leading-none text-white">Serqet</span>
-            <span className="text-[10px] text-primary font-bold tracking-[0.3em] uppercase">Kernel v1.0.4</span>
+            <span className="text-[10px] text-primary font-bold tracking-[0.3em] uppercase">Brain</span>
           </div>
         )}
       </div>
@@ -174,7 +174,7 @@ export function Sidebar({
           <div className="flex justify-between items-center px-2">
             {!isCollapsed && (
                <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setIsSessionsExpanded(!isSessionsExpanded)}>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest group-hover:text-primary transition-colors">Neural Threads</p>
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest group-hover:text-primary transition-colors">Terminal Sessions</p>
                   <ChevronDown size={10} className={`text-zinc-800 transition-transform ${isSessionsExpanded ? '' : '-rotate-90'}`} />
                </div>
             )}
@@ -288,7 +288,7 @@ export function Sidebar({
            <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/20 rounded-lg"><BrainCircuit className="text-primary" size={20} /></div>
             <div>
-              <DialogTitle className="text-xl font-black italic uppercase tracking-tighter">Neural DNA: {selectedAgent?.name}</DialogTitle>
+              <DialogTitle className="text-xl font-black italic uppercase tracking-tighter">Agent: {selectedAgent?.name}</DialogTitle>
               <DialogDescription className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Modifying specialist [{selectedAgent?.slug}]</DialogDescription>
             </div>
           </div>
@@ -296,7 +296,7 @@ export function Sidebar({
         <textarea value={tempPrompt} onChange={(e) => setTempPrompt(e.target.value)} spellCheck={false} className="w-full h-96 bg-black border border-zinc-800 rounded-2xl p-6 font-mono text-xs text-emerald-500/80 focus:border-primary/50 outline-none resize-none" />
         <div className="flex justify-end gap-2 mt-4">
            <button onClick={() => setIsEditorOpen(false)} className="px-4 py-2 text-[10px] font-black uppercase text-zinc-500 hover:text-white">Abort</button>
-           <button onClick={saveNeuralDNA} className="px-6 py-2 bg-primary text-white text-[10px] font-black uppercase rounded-lg border-t border-white/20"><Save size={14} className="mr-2 inline"/> Sync DNA</button>
+           <button onClick={saveNeuralDNA} className="px-6 py-2 bg-primary text-white text-[10px] font-black uppercase rounded-lg border-t border-white/20"><Save size={14} className="mr-2 inline"/> Sync</button>
         </div>
       </DialogContent>
     </Dialog>
