@@ -239,6 +239,35 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 			db.Instance.Create(&snip)
 			return "Automation logic archived by Builder.", "view_overview"
+
+		case "execute_submit_for_review":
+			// Log for debugging
+			log.Printf("[EXECUTOR] Capturing Action: %s", utils.SafeString(data, "title"))
+
+			newAction := models.PendingAction{
+				// Check if Python sent 'type' or 'action_type'
+				Type:     utils.SafeString(data, "type"), 
+				Title:    utils.SafeString(data, "title"),
+				Content:  utils.SafeString(data, "content"),
+				Priority: utils.SafeString(data, "priority"),
+				Status:   "Pending",
+			}
+
+			// Safety check: if 'type' is empty, try 'action_type'
+			if newAction.Type == "" {
+				newAction.Type = utils.SafeString(data, "action_type")
+			}
+
+			if err := db.Instance.Create(&newAction).Error; err != nil {
+				log.Printf("[DATABASE ERROR] PendingAction: %v", err)
+				return "Failed to save action to queue.", ""
+			}
+
+			// Emit event so the sidebar/overview pulse
+			EmitEvent("KERNEL", "Draft Ready: "+newAction.Title, "SUCCESS")
+
+			return fmt.Sprintf("Action center updated with: %s", newAction.Title), "view_overview"
+
 		}
 
 	return "", ""

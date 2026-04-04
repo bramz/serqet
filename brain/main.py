@@ -38,7 +38,7 @@ async def process_intent(req: IntentRequest):
             "tool_data": None
         }
         
-        logger.info(f"--- [KERNEL] Processing Session: {req.session_id} ---")
+        logger.info(f"[BRAIN] Processing Session: {req.session_id}")
         
         result = serqet_brain.invoke(initial_state)
         
@@ -79,7 +79,7 @@ async def process_intent(req: IntentRequest):
         }
 
     except Exception as e:
-        logger.error(f"!!! [KERNEL PANIC] !!!: {str(e)}")
+        logger.error(f"!!! [BRAIN PANIC] !!!: {str(e)}")
         return {
             "status": "error",
             "message": f"Neural Link Error: {str(e)}",

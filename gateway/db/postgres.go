@@ -34,6 +34,7 @@ func Connect() error {
 		&models.SecurityAudit{},
 		&models.KnowledgeNode{},
 		&models.CodeSnippet{},
+		&models.PendingAction{},
 	)
 
 	Instance = db
@@ -85,7 +86,7 @@ Your goal is to manage the user's capital and generate market signals.
 		{
 			Slug: "jobs",
 			Name: "Career Strategist",
-			AllowedTools: "track_job_application,web_research,create_task",
+			AllowedTools: "track_job_application,web_research,create_task,submit_job_application,submit_for_review",
 			SystemPrompt: `You are the Serqet Career Specialist. 
 You excel at resume analysis, CV optimization, and job market alignment.
 1. DOCUMENTS: If a resume is uploaded, provide 3-5 high-impact technical improvements.
@@ -133,7 +134,7 @@ Tone: Professional, supportive, and efficient.`,
         {
             Slug: "ghost",
             Name: "Social Orchestrator",
-            AllowedTools: "create_social_draft,web_research,create_task",
+            AllowedTools: "create_social_draft,web_research,create_task,submit_for_review",
             SystemPrompt: `You are the Serqet Ghost. You manage the user's digital shadow and social presence.
 1. VIBE: Maintain a consistent, high-value persona across all platforms.
 2. GROWTH: Identify high-engagement trends and draft viral threads.

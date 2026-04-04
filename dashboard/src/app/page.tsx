@@ -12,6 +12,7 @@ import { TaskModule } from "@/components/modules/TaskModule";
 import { HealthModule } from "@/components/modules/HealthModule";
 import { ChatInterface } from "@/components/chat/ChatInterface";
 import { SettingsModule } from "@/components/modules/SettingsModule";
+import { ActionsModule } from "@/components/modules/ActionsModule";
 
 // Define the available modes
 export type TerminalMode = 'collapsed' | 'half' | 'full';
@@ -63,6 +64,7 @@ export default function Home() {
           {activeTab === "overview" && (
             <OverviewModule onQuickAction={executeCommand} onNavigate={setActiveTab} />
           )}
+          {activeTab === "actions" && <ActionsModule onQuickAction={executeCommand} />}
           {activeTab === "finance" && <FinanceModule onQuickAction={executeCommand}/>}
           {activeTab === "social" && <SocialModule />}
           {activeTab === "research" && <ResearchModule />}

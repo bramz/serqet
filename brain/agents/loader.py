@@ -1,47 +1,45 @@
-from .research import ResearchAgent
-from .finance import FinanceAgent
-from .health import HealthAgent
-from .tasks import TasksAgent
+from .specialists import (
+    ArbiterAgent, ResearchAgent, FinanceAgent, JobAgent,
+    HealthAgent, TasksAgent, ManagerAgent, VanguardAgent,
+    GhostAgent, OracleAgent, BuilderAgent
+)
 from .base import SerqetAgent
-from .manager import ManagerAgent
-from .arbiter import ArbiterAgent
-from .jobs import JobAgent
-
-AGENT_MAP = {
-    "research": ResearchAgent(),
-    "finance": FinanceAgent(),
-    "health": HealthAgent(),
-    "tasks": TasksAgent(),
-    "manager": ManagerAgent(),
-    "arbiter": ArbiterAgent(),
-    "jobs": JobAgent()
-}
 
 def get_agent_for_intent(query: str) -> SerqetAgent:
-    query = query.lower()
+    q = query.lower()
+    
+    # Priority 1: High-Stakes Operations
+    if any(w in q for w in ["scout", "venture", "niche", "revenue", "profit", "arbitrage"]):
+        return ArbiterAgent()
+    
+    if any(w in q for w in ["security", "privacy", "leak", "vulnerability", "audit"]):
+        return VanguardAgent()
 
-    if any(w in query for w in ["scout", "venture", "niche", "arbitrage", "opportunity", "revenue"]):
-        print("[LOADER] Routing to ARBITER agent")        
-        return AGENT_MAP["arbiter"]
+    # Priority 2: Standard Modules
+    if any(w in q for w in ["kraken", "portfolio", "btc", "eth", "trade", "signal", "spent"]):
+        return FinanceAgent()
+    
+    if any(w in q for w in ["resume", "cv", "job", "career", "hiring", "apply"]):
+        return JobAgent()
+    
+    if any(w in q for w in ["research", "search", "ddg", "find information", "news"]):
+        return ResearchAgent()
+    
+    if any(w in q for w in ["ate", "workout", "calories", "gym", "meal"]):
+        return HealthAgent()
 
-    if any(w in query for w in ["research", "search", "news"]):
-        print("[LOADER] Routing to RESEARCH agent")
-        return AGENT_MAP["research"]
+    # Priority 3: Meta & Learning
+    if any(w in q for w in ["oracle", "learn", "summarize docs", "documentation"]):
+        return OracleAgent()
+        
+    if any(w in q for w in ["code", "refactor", "build feature", "automation engine"]):
+        return BuilderAgent()
+
+    if any(w in q for w in ["social", "tweet", "post", "ghost"]):
+        return GhostAgent()
+
+    if any(w in q for w in ["task", "todo", "plan", "remind"]):
+        return TasksAgent()
     
-    if any(w in query for w in ["kraken", "portfolio", "btc", "spent"]):
-        print("[LOADER] Routing to FINANCE agent")
-        return AGENT_MAP["finance"]
-    
-    if any(w in query for w in ["ate", "workout", "calories", "gym"]):
-        print("[LOADER] Routing to HEALTH agent")
-        return AGENT_MAP["health"]
-    
-    if any(w in query for w in ["task", "todo", "plan"]):
-        print("[LOADER] Routing to TASK agent")
-        return AGENT_MAP["tasks"]
-    
-    if any(w in query for w in ["resume", "cv", "career", "job", "apply", "hiring"]):
-        print("[LOADER] Routing to JOB agent")
-        return AGENT_MAP["jobs"]
-    
-    return SerqetAgent()
+    # Default to Manager/CoS
+    return ManagerAgent()

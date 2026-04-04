@@ -1,43 +1,36 @@
-from typing import List, Optional
+import os
+import requests
+from typing import List, Optional, Dict, Any
+
+GATEWAY_URL = os.getenv("GATEWAY_URL", "http://localhost:8001")
 
 class SerqetAgent:
-    name: str = "base_agent"
-    description: str = ""
-    system_prompt: str = ""
-    allowed_tools: List[str] = []
-    
-    def get_full_prompt(self) -> str:
-        return self.system_prompt
+    def __init__(self, slug: str):
+        self.slug = slug
+        self.config = self._fetch_remote_config()
+        self.name = self.config.get("name", slug.capitalize()) if self.config else slug.capitalize()
+
+    def _fetch_remote_config(self) -> Optional[Dict[str, Any]]:
+        """Hits the Go Gateway to get live DNA (Prompts & Tools)."""
+        try:
+            # fetch all and filter to reduce API overhead
+            resp = requests.get(f"{GATEWAY_URL}/api/v1/agents", timeout=2)
+            if resp.status_code == 200:
+                agents = resp.json()
+                return next((a for a in agents if a['slug'] == self.slug), None)
+        except Exception as e:
+            print(f"[BRAIN ERROR] Failed to fetch DNA for {self.slug}: {e}")
+        return None
 
     def get_system_prompt(self) -> str:
-        return "You are Serqet, an AI assistant designed to help with a wide range of tasks." \
-        "You have access to various tools and resources to assist users effectively." \
-        "If no tool is needed, provide a direct answer to the user's query."
-    
+        """Returns the prompt from Postgres, or a safety fallback."""
+        if self.config and self.config.get("system_prompt"):
+            return self.config["system_prompt"]
+        return f"You are the {self.slug} specialist for Serqet."
 
-# import requests
-
-# class SerqetAgent:
-#     def __init__(self, slug: str):
-#         self.name = slug
-#         self._config = self._fetch_config()
-
-#     def _fetch_config(self):
-#         try:
-#             resp = requests.get(f"http://localhost:8001/api/v1/agents", timeout=1)
-#             agents = resp.json()
-#             return next((a for a in agents if a['slug'] == self.name), None)
-#         except:
-#             return None
-
-#     def get_system_prompt(self) -> str:
-#         if self._config:
-#             return self._config.get('system_prompt', "You are a Serqet Agent.")
-#         return "You are a Serqet Agent."
-
-#     @property
-#     def allowed_tools(self) -> list:
-#         if self._config and self._config.get('allowed_tools'):
-#             # Convert comma-separated string from Go to Python list
-#             return [t.strip() for t in self._config['allowed_tools'].split(',')]
-#         return []
+    @property
+    def allowed_tools(self) -> List[str]:
+        """Parses the comma-separated tool string from Postgres."""
+        if self.config and self.config.get("allowed_tools"):
+            return [t.strip() for t in self.config["allowed_tools"].split(",") if t.strip()]
+        return []
