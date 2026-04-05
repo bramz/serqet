@@ -1,8 +1,12 @@
 "use client";
 
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { ChatInterface } from "@/components/chat/ChatInterface";
 import { useSerqet } from "@/hooks/useSerqet";
-import { useState, useEffect, useCallback } from "react";
+
+// Modules
 import { OverviewModule } from "@/components/modules/OverviewModule";
 import { FinanceModule } from "@/components/modules/FinanceModule";
 import { SocialModule } from "@/components/modules/SocialModule";
@@ -10,24 +14,33 @@ import { ResearchModule } from "@/components/modules/ResearchModule";
 import { JobModule } from "@/components/modules/JobModule";
 import { TaskModule } from "@/components/modules/TaskModule";
 import { HealthModule } from "@/components/modules/HealthModule";
-import { ChatInterface } from "@/components/chat/ChatInterface";
 import { SettingsModule } from "@/components/modules/SettingsModule";
 import { ActionsModule } from "@/components/modules/ActionsModule";
 
-// Define the available modes
 export type TerminalMode = 'collapsed' | 'half' | 'full';
 
-export default function Home() {
+// 1. Create a wrapper component to handle search params
+function DashboardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
   const [activeSessionId, setActiveSessionId] = useState<string>("default");
   const [terminalMode, setTerminalMode] = useState<TerminalMode>('collapsed');
 
+  // 2. Derive activeTab from the URL, defaulting to 'overview'
+  const activeTab = searchParams.get("tab") || "overview";
+
+  // 3. Helper to change tabs and update URL simultaneously
+  const setActiveTab = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.push(`?${params.toString()}`);
+  };
+
   useEffect(() => {
     const savedSession = localStorage.getItem("serqet_active_session");
-    if (savedSession) {
-      setActiveSessionId(savedSession);
-    }
+    if (savedSession) setActiveSessionId(savedSession);
   }, []);
 
   const handleSessionChange = (id: string) => {
@@ -37,7 +50,8 @@ export default function Home() {
 
   const { chatHistory, askSerqet, loading } = useSerqet(activeSessionId, (action) => {
     if (action.startsWith("view_")) {
-      setActiveTab(action.replace("view_", ""));
+      const target = action.replace("view_", "");
+      setActiveTab(target); // URL updates automatically
     }
   });
 
@@ -49,7 +63,7 @@ export default function Home() {
   return (
     <div 
       className="flex h-screen bg-black text-white overflow-hidden"
-      style={{ '--sidebar-width': isSidebarCollapsed ? '72px' : '280px' } as any}
+      style={{ '--sidebar-width': isSidebarCollapsed ? '72px' : '300px' } as any}
     >
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
@@ -64,13 +78,14 @@ export default function Home() {
           {activeTab === "overview" && (
             <OverviewModule onQuickAction={executeCommand} onNavigate={setActiveTab} />
           )}
-          {activeTab === "actions" && <ActionsModule onQuickAction={executeCommand} />}
+
           {activeTab === "finance" && <FinanceModule onQuickAction={executeCommand}/>}
           {activeTab === "social" && <SocialModule />}
           {activeTab === "research" && <ResearchModule />}
           {activeTab === "job" && <JobModule />}
           {activeTab === "task" && <TaskModule />}
           {activeTab === "health" && <HealthModule />}
+          {activeTab === "actions" && <ActionsModule onQuickAction={executeCommand} />}
           {activeTab === "settings" && <SettingsModule />}
 
           {activeTab !== "overview" && (
@@ -92,5 +107,14 @@ export default function Home() {
         />
       </main>
     </div>
+  );
+}
+
+// 4. Main Export wrapped in Suspense (Next.js 15 Requirement)
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="bg-black h-screen w-screen flex items-center justify-center text-primary font-black uppercase tracking-[0.4em] animate-pulse">Initializing OS...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
