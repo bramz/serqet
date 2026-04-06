@@ -15,158 +15,146 @@ from tools import ALL_TOOLS
 TOOL_MAP = {t.name: t for t in ALL_TOOLS}
 
 def agent_node(state: AgentState):
-    query = state["messages"][-1].content
-    user_id = state.get("user_id", "user")
+    raw_query = state["messages"][-1].content
+    query = str(raw_query) if raw_query else "System Refresh"
     session_id = state.get("session_id", "default")
+    user_id = state.get("user_id", "user")
     file_path = state.get("file_path")
     
-    # memory recall
-    context = memory_engine.recall(query, session_id=session_id) 
     agent = get_agent_for_intent(query)
-    print(f" [BRAIN] Specialist: {agent.name} | Session: {session_id} ")
+    print(f"--- [KERNEL] specialist: {agent.slug} ({agent.name}) | Session: {session_id} ---")
 
-    voice_hint = ""
-    if file_path and file_path.lower().endswith(('.webm', '.mp3', '.wav')):
-        voice_hint = "\nIMPORTANT: This is a VOCAL COMMAND. Listen to the audio and act as the most appropriate specialist (Finance, Health, Jobs, or Research)."
+    try:
+        context = memory_engine.recall(query, session_id=session_id)
+    except:
+        context = ""
 
-
-    # allowed tools
-    allowed_tools = [t for t in ALL_TOOLS if t.name in agent.allowed_tools]
+    allowed_tool_names = agent.allowed_tools
+    allowed_tools = [t for t in ALL_TOOLS if t.name in allowed_tool_names]
+    
     llm = get_llm("gemini")
     llm_with_tools = llm.bind_tools(allowed_tools) if allowed_tools else llm
     
     try:
-        system_modifier = ""
+        brain_directive = f"\n\n[BRAIN_DIRECTIVE]: Role={agent.slug.upper()}. " \
+                           f"Tools={', '.join(allowed_tool_names)}. " \
+                           f"MANDATORY: You are an autonomous agent. If multiple steps are required, " \
+                           f"call all necessary tools in sequence. Always use 'launch_venture' or 'submit_for_review' to persist data."
+
         if user_id == "SYSTEM_CORE":
-            system_modifier = "\n\nCRITICAL: You are running in AUTONOMOUS MODE. Be extremely concise. " \
-                            "Execute tools immediately without asking for permission. " \
-                            "Summarize results as a system log entry."
-            sys_prompt = f"{agent.get_system_prompt()}{system_modifier}\n\nCONTEXT:\n{memory_engine.recall(query, state['session_id'])}"
+            sys_prompt = f"{agent.get_system_prompt()}{brain_directive}\n\nAUTONOMOUS MODE."
         else:
-            sys_prompt = f"{agent.get_system_prompt()}{voice_hint}\n\nCONTEXT:\n{context or 'None'}"
-            
+            sys_prompt = f"{agent.get_system_prompt()}{brain_directive}\n\nLIFETIME_CONTEXT: {context}"
+        
         prompt_stack = [SystemMessage(content=sys_prompt)]
         prompt_stack.extend(state["messages"][:-1])
 
         if file_path and os.path.exists(file_path):
             ext = os.path.splitext(file_path)[1].lower()
             b64_data = encode_image(file_path)
-            
             content_parts = [{"type": "text", "text": query}]
-
             if ext in [".wav", ".mp3", ".webm", ".ogg"]:
-                print(f"[AUDIO] Ingesting Audio for Gemini: {file_path}")
-                content_parts.append({
-                    "type": "media", 
-                    "mime_type": f"audio/{ext[1:] if ext != '.webm' else 'webm'}", 
-                    "data": b64_data
-                })
+                content_parts.append({"type": "media", "mime_type": f"audio/{ext[1:] if ext != '.webm' else 'webm'}", "data": b64_data})
             elif ext == ".pdf":
                 content_parts.append({"type": "media", "mime_type": "application/pdf", "data": b64_data})
             else:
                 content_parts.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_data}"}})
-            
             prompt_stack.append(HumanMessage(content=content_parts))
+        else:
+            prompt_stack.append(HumanMessage(content=query))
 
         response = llm_with_tools.invoke(prompt_stack)
         
+        # --- MULTI-TOOL EXECUTION BRANCH ---
         if hasattr(response, 'tool_calls') and len(response.tool_calls) > 0:
-            t_call = response.tool_calls[0]
-            tool_name = t_call['name']
-            tool_args = t_call['args']
+            print(f" [BRAIN] Parallel Tool Calls Detected: {len(response.tool_calls)} ")
             
-            print(f" [BRAIN] Executing {tool_name} ")
-            target_func = TOOL_MAP.get(tool_name)
-            
-            if target_func:
-                tool_output = target_func.invoke(tool_args)
-                # state["file_path"] = None
+            # Store final results to return to Go
+            final_action = None
+            final_data = None
 
-                if "rsi" in tool_output:
-                    print(f" [BRAIN] Indicators computed. Chaining to decision logic ")
-                    state["messages"].append(response)
-                    state["messages"].append(HumanMessage(content=f"INDICATORS: {tool_output}. Use 'generate_trading_signal' to save the result."))
-                    return agent_node(state)
+            for t_call in response.tool_calls:
+                tool_name = t_call['name']
+                tool_args = t_call['args']
                 
-                if tool_output.get("action") == "market_scout_initiated":
-                    search_result = TOOL_MAP["web_research"].invoke({"query": tool_output["search_query"]})
-                    state["messages"].append(response)
-                    state["messages"].append(HumanMessage(content=f"SEARCH DATA: {search_result['findings']}. Call 'launch_venture' with a business plan."))
-                    return agent_node(state)
+                if tool_name not in allowed_tool_names:
+                    print(f" [SECURITY] Blocked unauthorized tool: {tool_name}")
+                    continue
 
-                if tool_name == "web_research":
-                    print(" [BRAIN] Synthesizing Research Report ")
-                    synth_p = f"QUERY: {tool_args.get('query')}\nDATA: {tool_output.get('findings')}\nTASK: Format to clean Markdown."
-                    clean_res = get_llm("gemini").invoke(synth_p)
-                    clean_markdown = parse_content(clean_res.content)
-                    
-                    if agent.name == "arbiter":
+                target_func = TOOL_MAP.get(tool_name)
+                if target_func:
+                    print(f" [KERNEL] Executing: {tool_name}")
+                    tool_output = target_func.invoke(tool_args)
+
+                    # 1. Specialized Chaining (Research / Finance)
+                    if tool_name == "web_research":
+                        synth_p = f"DATA: {tool_output.get('findings')}\nTASK: Synthesize clean Markdown for {agent.slug}."
+                        clean_res = get_llm("gemini").invoke(synth_p)
+                        clean_markdown = parse_content(clean_res.content)
+                        
+                        if agent.slug in ["arbiter", "jobs"]:
+                            state["messages"].append(response)
+                            instr = "launch_venture" if agent.slug == "arbiter" else "submit_for_review"
+                            state["messages"].append(HumanMessage(content=f"INTEL: {clean_markdown}\n\nCall '{instr}' NOW to save this to the DB."))
+                            return agent_node(state) 
+                        
+                        # Set as current return values
+                        final_action = "execute_web_research"
+                        final_data = {"query": tool_args.get('query'), "findings": clean_markdown}
+
+                    # 2. Chaining for Signals or Scouting
+                    elif "rsi" in tool_output or tool_output.get("action") == "market_scout_initiated":
                         state["messages"].append(response)
-                        state["messages"].append(HumanMessage(content=f"INTEL: {clean_markdown}. Now call 'launch_venture'."))
+                        state["messages"].append(HumanMessage(content=f"DATA_RECEIVED: {tool_output}. Execute the next step in the sequence."))
                         return agent_node(state)
 
-                    return {
-                        "messages": [AIMessage(content=clean_markdown)], 
-                        "action": "execute_web_research",
-                        "tool_data": {"query": tool_args.get('query'), "findings": clean_markdown}
-                    }
+                    # 3. Standard Tools
+                    else:
+                        final_action = f"execute_{tool_name}"
+                        final_data = tool_output
 
-                return {
-                    "messages": [response], 
-                    "action": f"execute_{tool_name}",
-                    "tool_data": tool_output
-                }
+            # After processing all tool calls, return the most relevant one to the Gateway
+            return {
+                "messages": [response], 
+                "action": final_action,
+                "tool_data": final_data
+            }
 
+        # --- CONVERSATION & SHADOW SAVE ---
         text = parse_content(response.content)
         clean_text, action = extract_action_and_clean(text)
     
-        if agent.name == "arbiter" and not action and len(clean_text) > 150:
-            print(" [BRAIN] Arbiter talked too much. Extracting JSON... ")
-            ext_p = f"Extract JSON (name, category, strategy, projected_roi, platform) from: {clean_text}"
+        if agent.slug == "arbiter" and not action and len(clean_text) > 150:
+            print(" [BRAIN] FORCING VENTURE SAVE (SHADOW EXTRACT) ")
+            ext_p = f"Extract business JSON (name, category, strategy, projected_roi, platform) from: {clean_text}"
             ext_res = get_llm("gemini").invoke(ext_p)
             try:
                 raw_json = parse_content(ext_res.content).replace('```json', '').replace('```', '').strip()
-                return {
-                    "messages": [AIMessage(content=clean_text)], 
-                    "action": "execute_launch_venture", 
-                    "tool_data": json.loads(raw_json)
-                }
+                return {"messages": [AIMessage(content=clean_text)], "action": "execute_launch_venture", "tool_data": json.loads(raw_json)}
             except: pass
 
-        # archive interaction to ltm
+        if agent.slug == "jobs" and not action and len(clean_text) > 150:
+            print(" [BRAIN] FORCING JOB ACTION SAVE (SHADOW EXTRACT) ")
+            ext_p = f"Extract JSON (title, type, content, priority) from: {clean_text}. type='Job_App'."
+            ext_res = get_llm("gemini").invoke(ext_p)
+            try:
+                raw_json = parse_content(ext_res.content).replace('```json', '').replace('```', '').strip()
+                return {"messages": [AIMessage(content=clean_text)], "action": "execute_submit_for_review", "tool_data": json.loads(raw_json)}
+            except: pass
+
         if clean_text:
-            memory_engine.archive(f"User: {query} | Serqet: {clean_text}", metadata={"session_id": session_id})
+            memory_engine.archive(f"User: {query} | Serqet: {clean_text}", metadata={"session_id": session_id, "agent": agent.slug})
 
         return {"messages": [AIMessage(content=clean_text)], "action": action}
 
     except Exception as e:
-        print(f"!!! [BRAIN PANIC]: {str(e)} !!!")
-        return trigger_ai_fallback(query, state, "neural_link")
+        print(f"!!! [KERNEL PANIC]: {str(e)} !!!")
+        return trigger_ai_fallback(query, state, "BRAIN")
 
 def trigger_ai_fallback(query: str, state: AgentState, context: str = "general"):
-    """The safety net that ensures Serqet always responds intelligently."""
     llm = get_llm("gemini")
-    
-    fallback_prompt = f"""
-    The user requested: '{query}'
-    The system's {context} module failed or was unable to find live data.
-    
-    TASK: Provide a high-quality response from your internal training data.
-    - If this is research: Summarize what you know but prefix it with [INTERNAL KNOWLEDGE].
-    - If this is productivity: Suggest a logical next step.
-    - Stay concise and helpful.
-    """
-    
-    fallback_res = llm.invoke([SystemMessage(content=fallback_prompt)] + state["messages"])
-    
-    action = "execute_web_research" if context == "research" or "research" in query.lower() else None
-    tool_data = {"query": query, "findings": fallback_res.content} if action else None
-
-    return {
-        "messages": [fallback_res],
-        "action": action,
-        "tool_data": tool_data
-    }
+    fallback_res = llm.invoke([SystemMessage(content=f"Error in {context}. User request: {query}")] + state["messages"])
+    return {"messages": [fallback_res], "action": None}
 
 def build_graph():
     workflow = StateGraph(AgentState)

@@ -68,6 +68,10 @@ func main() {
 	// uploads
 	v1.Post("/upload", api.UploadHandler)
 
+	// actions
+ 	v1.Get("/actions/pending", api.GetPendingActions)
+	v1.Get("/actions", api.GetAllActions)
+
 
 	log.Fatal(app.Listen(":8001"))
 }

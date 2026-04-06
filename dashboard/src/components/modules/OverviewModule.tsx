@@ -9,7 +9,8 @@ import {
   ShieldCheck, ChevronRight, HardDrive, Server, Rocket,
   Cog, History, Flame, MessageSquare,
   TimerIcon,
-  Linkedin
+  Linkedin,
+  Play
 } from "lucide-react";
 import { GATEWAY_URL } from '@/lib/constants';
 
@@ -45,7 +46,6 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
         <DiagBox icon={<Cpu size={14}/>} label="CPU" val={data.system_stats.cpu} color="text-emerald-500" />
         <DiagBox icon={<Server size={14}/>} label="RAM" val={data.system_stats.memory_usage} color="text-purple-500" />
         <DiagBox icon={<TimerIcon size={14}/>} label="Uptime" val={data.system_stats.uptime} color="text-cyan-500" />
-        {/* <DiagBox icon={<ShieldCheck size={14}/>} label="Neural" val={data.system_stats.neural_latency} color="text-cyan-500" /> */}
         <DiagBox icon={<Database size={14}/>} label="Memory" val={data.system_stats.vector_count} color="text-amber-500" />
       </header>
 
@@ -68,6 +68,29 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
 
       {/* DATA LEDGER GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
+        {/* NEW: ACTION QUEUE (Pending Approvals) */}
+        <LedgerCard title="Action Queue" icon={<Zap size={14} className="text-white"/>} onOpen={() => onNavigate("actions")}>
+           <div className="space-y-2">
+             {data.actions && data.actions.length > 0 ? data.actions.map((a: any) => (
+               <div key={a.ID} className="bg-primary/5 p-2.5 rounded-lg border border-primary/20 flex justify-between items-center group/item hover:bg-primary/10 transition-all">
+                 <div className="flex flex-col">
+                   <span className="text-xs font-bold text-zinc-300 truncate pr-2 uppercase tracking-tighter">{a.title}</span>
+                   <span className="text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">{a.type}</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-black text-primary px-2 py-0.5 rounded uppercase border border-primary/20">Review</span>
+                 </div>
+               </div>
+             )) : (
+              <div className="flex flex-col items-center justify-center py-10 opacity-20">
+                <ShieldCheck size={24} />
+                <span className="text-[9px] font-black uppercase mt-2 tracking-widest">Queue Clear</span>
+              </div>
+             )}
+           </div>
+        </LedgerCard>
+
         <LedgerCard title="Finance" icon={<DollarSign size={14} className="text-white"/>} onOpen={() => onNavigate("finance")}>
            <table className="w-full">
              <tbody className="text-xs">
@@ -116,9 +139,12 @@ export function OverviewModule({ onQuickAction, onNavigate }: any) {
 
         <LedgerCard title="Brain Logs" icon={<Binary size={14} className="text-white"/>}>
            <div className="space-y-3 font-mono text-[10px] text-zinc-500">
-             <div className="flex gap-2"><span className="text-emerald-500 font-bold shrink-0">[OK]</span> <span>Kraken feed live</span></div>
-             <div className="flex gap-2"><span className="text-white font-bold shrink-0">[AI]</span> <span>Chroma Memory indexed</span></div>
-             <div className="flex gap-2"><span className="text-blue-500 font-bold shrink-0">[IO]</span> <span>Research Report v2 saved</span></div>
+             {data.events?.map((ev: any) => (
+               <div key={ev.ID} className="flex gap-2">
+                 <span className={`${ev.level === 'SUCCESS' ? 'text-emerald-500' : 'text-primary'} font-bold shrink-0`}>[{ev.source}]</span>
+                 <span className="truncate">{ev.message}</span>
+               </div>
+             ))}
            </div>
         </LedgerCard>
 
