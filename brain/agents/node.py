@@ -22,7 +22,7 @@ def agent_node(state: AgentState):
     file_path = state.get("file_path")
     
     agent = get_agent_for_intent(query)
-    print(f"--- [KERNEL] specialist: {agent.slug} ({agent.name}) | Session: {session_id} ---")
+    print(f"[BRAIN] specialist: {agent.slug} ({agent.name}) | Session: {session_id} ")
 
     try:
         context = memory_engine.recall(query, session_id=session_id)
@@ -39,7 +39,7 @@ def agent_node(state: AgentState):
         brain_directive = f"\n\n[BRAIN_DIRECTIVE]: Role={agent.slug.upper()}. " \
                            f"Tools={', '.join(allowed_tool_names)}. " \
                            f"MANDATORY: You are an autonomous agent. If multiple steps are required, " \
-                           f"call all necessary tools in sequence. Always use 'launch_venture' or 'submit_for_review' to persist data."
+                           f"call all necessary tools in sequence. Always 'submit_for_review' to persist data."
 
         if user_id == "SYSTEM_CORE":
             sys_prompt = f"{agent.get_system_prompt()}{brain_directive}\n\nAUTONOMOUS MODE."
@@ -65,7 +65,6 @@ def agent_node(state: AgentState):
 
         response = llm_with_tools.invoke(prompt_stack)
         
-        # --- MULTI-TOOL EXECUTION BRANCH ---
         if hasattr(response, 'tool_calls') and len(response.tool_calls) > 0:
             print(f" [BRAIN] Parallel Tool Calls Detected: {len(response.tool_calls)} ")
             
@@ -83,10 +82,9 @@ def agent_node(state: AgentState):
 
                 target_func = TOOL_MAP.get(tool_name)
                 if target_func:
-                    print(f" [KERNEL] Executing: {tool_name}")
+                    print(f" [BRAIN] Executing: {tool_name}")
                     tool_output = target_func.invoke(tool_args)
 
-                    # 1. Specialized Chaining (Research / Finance)
                     if tool_name == "web_research":
                         synth_p = f"DATA: {tool_output.get('findings')}\nTASK: Synthesize clean Markdown for {agent.slug}."
                         clean_res = get_llm("gemini").invoke(synth_p)
@@ -102,25 +100,21 @@ def agent_node(state: AgentState):
                         final_action = "execute_web_research"
                         final_data = {"query": tool_args.get('query'), "findings": clean_markdown}
 
-                    # 2. Chaining for Signals or Scouting
                     elif "rsi" in tool_output or tool_output.get("action") == "market_scout_initiated":
                         state["messages"].append(response)
                         state["messages"].append(HumanMessage(content=f"DATA_RECEIVED: {tool_output}. Execute the next step in the sequence."))
                         return agent_node(state)
 
-                    # 3. Standard Tools
                     else:
                         final_action = f"execute_{tool_name}"
                         final_data = tool_output
 
-            # After processing all tool calls, return the most relevant one to the Gateway
             return {
                 "messages": [response], 
                 "action": final_action,
                 "tool_data": final_data
             }
 
-        # --- CONVERSATION & SHADOW SAVE ---
         text = parse_content(response.content)
         clean_text, action = extract_action_and_clean(text)
     
@@ -148,7 +142,7 @@ def agent_node(state: AgentState):
         return {"messages": [AIMessage(content=clean_text)], "action": action}
 
     except Exception as e:
-        print(f"!!! [KERNEL PANIC]: {str(e)} !!!")
+        print(f"!!! [BRAIN PANIC]: {str(e)} !!!")
         return trigger_ai_fallback(query, state, "BRAIN")
 
 def trigger_ai_fallback(query: str, state: AgentState, context: str = "general"):
