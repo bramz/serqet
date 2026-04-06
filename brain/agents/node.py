@@ -22,8 +22,7 @@ def agent_node(state: AgentState):
     file_path = state.get("file_path")
     
     agent = get_agent_for_intent(query)
-    # DEBUG: Use slug for internal logic checks
-    print(f" [BRAIN] specialist: {agent.slug} ({agent.name}) | Session: {session_id} ")
+    print(f"--- [KERNEL] specialist: {agent.slug} ({agent.name}) | Session: {session_id} ---")
 
     try:
         context = memory_engine.recall(query, session_id=session_id)
@@ -39,7 +38,8 @@ def agent_node(state: AgentState):
     try:
         brain_directive = f"\n\n[BRAIN_DIRECTIVE]: Role={agent.slug.upper()}. " \
                            f"Tools={', '.join(allowed_tool_names)}. " \
-                           f"MANDATORY: Use 'submit_for_review' to save."
+                           f"MANDATORY: You are an autonomous agent. If multiple steps are required, " \
+                           f"call all necessary tools in sequence. Always use 'launch_venture' or 'submit_for_review' to persist data."
 
         if user_id == "SYSTEM_CORE":
             sys_prompt = f"{agent.get_system_prompt()}{brain_directive}\n\nAUTONOMOUS MODE."
@@ -65,47 +65,67 @@ def agent_node(state: AgentState):
 
         response = llm_with_tools.invoke(prompt_stack)
         
-        #  TOOL BRANCH 
+        # --- MULTI-TOOL EXECUTION BRANCH ---
         if hasattr(response, 'tool_calls') and len(response.tool_calls) > 0:
-            t_call = response.tool_calls[0]
-            tool_name = t_call['name']
+            print(f" [BRAIN] Parallel Tool Calls Detected: {len(response.tool_calls)} ")
             
-            if tool_name not in allowed_tool_names:
-                state["messages"].append(AIMessage(content=f"Access Denied: {tool_name}"))
-                return agent_node(state)
+            # Store final results to return to Go
+            final_action = None
+            final_data = None
 
-            target_func = TOOL_MAP.get(tool_name)
-            if target_func:
-                tool_output = target_func.invoke(t_call['args'])
+            for t_call in response.tool_calls:
+                tool_name = t_call['name']
+                tool_args = t_call['args']
+                
+                if tool_name not in allowed_tool_names:
+                    print(f" [SECURITY] Blocked unauthorized tool: {tool_name}")
+                    continue
 
-                if tool_name == "web_research":
-                    synth_p = f"DATA: {tool_output.get('findings')}\nTASK: Synthesize clean Markdown for {agent.slug}."
-                    clean_res = get_llm("gemini").invoke(synth_p)
-                    clean_markdown = parse_content(clean_res.content)
-                    
-                    # FIX: Use agent.slug here instead of agent.name
-                    if agent.slug == "arbiter" or agent.slug == "jobs":
+                target_func = TOOL_MAP.get(tool_name)
+                if target_func:
+                    print(f" [KERNEL] Executing: {tool_name}")
+                    tool_output = target_func.invoke(tool_args)
+
+                    # 1. Specialized Chaining (Research / Finance)
+                    if tool_name == "web_research":
+                        synth_p = f"DATA: {tool_output.get('findings')}\nTASK: Synthesize clean Markdown for {agent.slug}."
+                        clean_res = get_llm("gemini").invoke(synth_p)
+                        clean_markdown = parse_content(clean_res.content)
+                        
+                        if agent.slug in ["arbiter", "jobs"]:
+                            state["messages"].append(response)
+                            instr = "launch_venture" if agent.slug == "arbiter" else "submit_for_review"
+                            state["messages"].append(HumanMessage(content=f"INTEL: {clean_markdown}\n\nCall '{instr}' NOW to save this to the DB."))
+                            return agent_node(state) 
+                        
+                        # Set as current return values
+                        final_action = "execute_web_research"
+                        final_data = {"query": tool_args.get('query'), "findings": clean_markdown}
+
+                    # 2. Chaining for Signals or Scouting
+                    elif "rsi" in tool_output or tool_output.get("action") == "market_scout_initiated":
                         state["messages"].append(response)
-                        instr = "launch_venture" if agent.slug == "arbiter" else "submit_for_review"
-                        state["messages"].append(HumanMessage(content=f"INTEL: {clean_markdown}\n\nCall '{instr}' NOW to save this to the DB."))
-                        return agent_node(state) 
-                    
-                    return {"messages": [AIMessage(content=clean_markdown)], "action": "execute_web_research", "tool_data": {"query": tool_args.get('query'), "findings": clean_markdown}}
+                        state["messages"].append(HumanMessage(content=f"DATA_RECEIVED: {tool_output}. Execute the next step in the sequence."))
+                        return agent_node(state)
 
-                if "rsi" in tool_output or tool_output.get("action") == "market_scout_initiated":
-                    state["messages"].append(response)
-                    state["messages"].append(HumanMessage(content=f"DATA: {tool_output}. Execute next tool."))
-                    return agent_node(state)
+                    # 3. Standard Tools
+                    else:
+                        final_action = f"execute_{tool_name}"
+                        final_data = tool_output
 
-                return {"messages": [response], "action": f"execute_{tool_name}", "tool_data": tool_output}
+            # After processing all tool calls, return the most relevant one to the Gateway
+            return {
+                "messages": [response], 
+                "action": final_action,
+                "tool_data": final_data
+            }
 
-        #  SHADOW SAVE (Safety Net) 
+        # --- CONVERSATION & SHADOW SAVE ---
         text = parse_content(response.content)
         clean_text, action = extract_action_and_clean(text)
     
-        # FIX: Check agent.slug
         if agent.slug == "arbiter" and not action and len(clean_text) > 150:
-            print(" [BRAIN] FORCING VENTURE SAVE ")
+            print(" [BRAIN] FORCING VENTURE SAVE (SHADOW EXTRACT) ")
             ext_p = f"Extract business JSON (name, category, strategy, projected_roi, platform) from: {clean_text}"
             ext_res = get_llm("gemini").invoke(ext_p)
             try:
@@ -114,7 +134,7 @@ def agent_node(state: AgentState):
             except: pass
 
         if agent.slug == "jobs" and not action and len(clean_text) > 150:
-            print(" [BRAIN] FORCING JOB ACTION SAVE ")
+            print(" [BRAIN] FORCING JOB ACTION SAVE (SHADOW EXTRACT) ")
             ext_p = f"Extract JSON (title, type, content, priority) from: {clean_text}. type='Job_App'."
             ext_res = get_llm("gemini").invoke(ext_p)
             try:
@@ -128,7 +148,7 @@ def agent_node(state: AgentState):
         return {"messages": [AIMessage(content=clean_text)], "action": action}
 
     except Exception as e:
-        print(f"!!! [BRAIN PANIC]: {str(e)} !!!")
+        print(f"!!! [KERNEL PANIC]: {str(e)} !!!")
         return trigger_ai_fallback(query, state, "BRAIN")
 
 def trigger_ai_fallback(query: str, state: AgentState, context: str = "general"):

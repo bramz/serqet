@@ -19,7 +19,6 @@ import { ActionsModule } from "@/components/modules/ActionsModule";
 
 export type TerminalMode = 'collapsed' | 'half' | 'full';
 
-// 1. Create a wrapper component to handle search params
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,10 +27,8 @@ function DashboardContent() {
   const [activeSessionId, setActiveSessionId] = useState<string>("default");
   const [terminalMode, setTerminalMode] = useState<TerminalMode>('collapsed');
 
-  // 2. Derive activeTab from the URL, defaulting to 'overview'
   const activeTab = searchParams.get("tab") || "overview";
 
-  // 3. Helper to change tabs and update URL simultaneously
   const setActiveTab = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
@@ -110,7 +107,6 @@ function DashboardContent() {
   );
 }
 
-// 4. Main Export wrapped in Suspense (Next.js 15 Requirement)
 export default function Home() {
   return (
     <Suspense fallback={<div className="bg-black h-screen w-screen flex items-center justify-center text-primary font-black uppercase tracking-[0.4em] animate-pulse">Initializing OS...</div>}>

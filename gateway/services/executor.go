@@ -11,6 +11,21 @@ import (
 )
 
 
+func mirrorToActionCenter(actionType, title, content string) {
+	action := models.PendingAction{
+		Type:     actionType,
+		Title:    title,
+		Content:  content,
+		Status:   "Pending",
+		Priority: "Medium",
+	}
+	if err := db.Instance.Create(&action).Error; err != nil {
+		log.Printf("[MIRROR ERROR] Failed to send to Action Center: %v", err)
+	} else {
+		log.Printf("[MIRROR SUCCESS] Action '%s' queued for review", title)
+	}
+}
+
 func ExecuteToolCall(action string, data map[string]interface{}) (string, string) {
 	log.Printf("Executing action: %s with data: %+v\n", action, data)
 	switch action {
@@ -160,7 +175,7 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			return fmt.Sprintf("Cash inflow of $%.2f recorded.", income.Amount), "view_finance"
 
 		case "execute_launch_venture", "execute_db_launch_venture":
-			log.Println("--- DEBUG: VENTURE EXECUTION STARTED ---")
+			log.Println(" DEBUG: VENTURE EXECUTION STARTED ")
 			
 			// Log the raw data map to see what Python sent
 			log.Printf("RAW DATA FROM PYTHON: %+v", data)
@@ -184,6 +199,7 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 				return "Internal DB Error", ""
 			}
 
+			// mirrorToActionCenter("Venture_Plan", "Review Strategy: "+venture.Name, venture.StrategySummary)
 			log.Printf("SUCCESS: Venture saved with ID: %d", venture.ID)
 			return fmt.Sprintf("Venture '%s' initialized.", venture.Name), "view_finance"
 
