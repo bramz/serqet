@@ -1,45 +1,32 @@
-from .specialists import (
-    ArbiterAgent, ResearchAgent, FinanceAgent, JobAgent,
-    HealthAgent, TasksAgent, ManagerAgent, VanguardAgent,
-    GhostAgent, OracleAgent, BuilderAgent
-)
+"""
+Intent router — maps a user query to the most relevant specialist.
+Keyword matching is intentionally simple; upgrade to embedding-based
+similarity if false-positives become a problem.
+"""
 from .base import SerqetAgent
-
+from .specialists import make_agent
+ 
+# (keywords, slug) — evaluated top-to-bottom, first match wins
+_RULES: list[tuple[list[str], str]] = [
+    # High-stakes / finance
+    (["scout", "venture", "niche", "revenue", "profit", "arbitrage"], "arbiter"),
+    (["security", "privacy", "leak", "vulnerability", "audit"], "vanguard"),
+    (["kraken", "portfolio", "btc", "eth", "trade", "signal", "spent", "expense", "salary"], "finance"),
+    # Career
+    (["resume", "cv", "job", "career", "hiring", "apply", "interview"], "jobs"),
+    # Knowledge / code
+    (["research", "search", "find information", "news", "ddg"], "researcher"),
+    (["code", "refactor", "build feature", "automation engine", "debug"], "builder"),
+    (["oracle", "learn", "summarize docs", "documentation", "explain"], "oracle"),
+    # Personal
+    (["ate", "calories", "gym", "meal", "workout", "protein", "nutrition"], "health"),
+    (["social", "tweet", "post", "ghost", "draft", "linkedin", "thread"], "ghost"),
+    (["task", "todo", "plan", "remind", "checklist"], "tasks"),
+]
+ 
 def get_agent_for_intent(query: str) -> SerqetAgent:
     q = query.lower()
-    
-    # Priority 1: High-Stakes Operations
-    if any(w in q for w in ["scout", "venture", "niche", "revenue", "profit", "arbitrage"]):
-        return ArbiterAgent()
-    
-    if any(w in q for w in ["security", "privacy", "leak", "vulnerability", "audit"]):
-        return VanguardAgent()
-
-    # Priority 2: Standard Modules
-    if any(w in q for w in ["kraken", "portfolio", "btc", "eth", "trade", "signal", "spent"]):
-        return FinanceAgent()
-    
-    if any(w in q for w in ["resume", "cv", "job", "career", "hiring", "apply"]):
-        return JobAgent()
-    
-    if any(w in q for w in ["research", "search", "ddg", "find information", "news"]):
-        return ResearchAgent()
-    
-    if any(w in q for w in ["ate", "workout", "calories", "gym", "meal"]):
-        return HealthAgent()
-
-    # Priority 3: Meta & Learning
-    if any(w in q for w in ["oracle", "learn", "summarize docs", "documentation"]):
-        return OracleAgent()
-        
-    if any(w in q for w in ["code", "refactor", "build feature", "automation engine"]):
-        return BuilderAgent()
-
-    if any(w in q for w in ["social", "tweet", "post", "ghost"]):
-        return GhostAgent()
-
-    if any(w in q for w in ["task", "todo", "plan", "remind"]):
-        return TasksAgent()
-    
-    # Default to Manager/CoS
-    return ManagerAgent()
+    for keywords, slug in _RULES:
+        if any(kw in q for kw in keywords):
+            return make_agent(slug)
+    return make_agent("manager")  # default
