@@ -45,6 +45,9 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 				Status:   "draft",
 			}
 			db.Instance.Create(&post)
+			
+			mirrorToActionCenter("Social_Post", "Post Draft: "+post.Platform, post.Content)
+
 			return "Draft saved to Social Hub.", "view_social"
 
 		case "execute_create_task":
@@ -62,6 +65,8 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 				Status:  "Applied",
 			}
 			db.Instance.Create(&job)
+			mirrorToActionCenter("Job_App", "Track App: "+job.Company, job.Role)
+
 			return "Job application tracked.", "view_jobs"
 
 		case "execute_record_meal":
