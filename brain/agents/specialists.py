@@ -1,34 +1,25 @@
 from .base import SerqetAgent
-
-class ArbiterAgent(SerqetAgent):
-    def __init__(self): super().__init__("arbiter")
-
-class ResearchAgent(SerqetAgent):
-    def __init__(self): super().__init__("researcher")
-
-class FinanceAgent(SerqetAgent):
-    def __init__(self): super().__init__("finance")
-
-class JobAgent(SerqetAgent):
-    def __init__(self): super().__init__("jobs")
-
-class HealthAgent(SerqetAgent):
-    def __init__(self): super().__init__("health")
-
-class TasksAgent(SerqetAgent):
-    def __init__(self): super().__init__("tasks")
-
-class ManagerAgent(SerqetAgent):
-    def __init__(self): super().__init__("manager")
-
-class VanguardAgent(SerqetAgent):
-    def __init__(self): super().__init__("vanguard")
-
-class GhostAgent(SerqetAgent):
-    def __init__(self): super().__init__("ghost")
-
-class OracleAgent(SerqetAgent):
-    def __init__(self): super().__init__("oracle")
-
-class BuilderAgent(SerqetAgent):
-    def __init__(self): super().__init__("builder")
+ 
+_SLUGS = [
+    "arbiter", "researcher", "finance", "jobs", "health",
+    "tasks", "manager", "vanguard", "ghost", "oracle", "builder",
+]
+ 
+def make_agent(slug: str) -> SerqetAgent:
+    """Return a SerqetAgent for the given slug."""
+    if slug not in _SLUGS:
+        raise ValueError(f"Unknown agent slug: {slug!r}")
+    return SerqetAgent(slug)
+ 
+# Named aliases kept for backwards-compat if other modules import them
+ArbiterAgent   = lambda: make_agent("arbiter")
+ResearchAgent  = lambda: make_agent("researcher")
+FinanceAgent   = lambda: make_agent("finance")
+JobAgent       = lambda: make_agent("jobs")
+HealthAgent    = lambda: make_agent("health")
+TasksAgent     = lambda: make_agent("tasks")
+ManagerAgent   = lambda: make_agent("manager")
+VanguardAgent  = lambda: make_agent("vanguard")
+GhostAgent     = lambda: make_agent("ghost")
+OracleAgent    = lambda: make_agent("oracle")
+BuilderAgent   = lambda: make_agent("builder")

@@ -17,55 +17,61 @@ func HandleIntent(c fiber.Ctx) error {
 		FilePath  string `json:"file_path,omitempty"`
 		WebURL    string `json:"web_url"`
 	}
-	c.Bind().JSON(&body)
-
-	if body.SessionID == "" { body.SessionID = "default" }
+	if err := c.Bind().JSON(&body); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+	if body.Query == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "query is required"})
+	}
+	if body.SessionID == "" {
+		body.SessionID = "default"
+	}
+	if body.UserID == "" {
+		body.UserID = "user"
+	}
 
 	var history []models.ChatHistory
-	db.Instance.Where("session_id = ?", body.SessionID).Order("created_at desc").Limit(5).Find(&history)
+	db.Instance.Where("session_id = ?", body.SessionID).
+		Order("created_at desc").Limit(5).Find(&history)
 
-	services.EmitEvent("BRAIN", "Processing intent for session: "+body.SessionID, "INFO")
+	services.EmitEvent("BRAIN", "Processing: "+body.SessionID, "INFO")
 
-	brainRes, err := services.RequestIntent(body.UserID, body.SessionID, body.Query, body.FilePath, history)
+	brainRes, err := services.RequestIntent(
+		body.UserID, body.SessionID, body.Query, body.FilePath, history,
+	)
 	if err != nil {
-		services.EmitEvent("BRAIN", "Neural Link timeout or failure", "ERROR")
+		services.EmitEvent("BRAIN", "Neural Link failure", "ERROR")
 		return c.Status(502).JSON(fiber.Map{"error": "Brain offline"})
 	}
 
-	log.Printf("BRAIN RESPONSE: Action=%s | Data=%+v", brainRes.Action, brainRes.Data)
-
-	if brainRes.Action != "" {
-		msg, action := services.ExecuteToolCall(brainRes.Action, brainRes.Data)
-		if msg != "" {
-			brainRes.Message = msg
-			brainRes.Action = action
-		} else {
-			log.Println("WARNING: Executor returned empty message for action:", brainRes.Action)
-		}
-	}
+	// Persist user message
 	db.Instance.Create(&models.ChatHistory{
-		UserID:    body.UserID, 
-		SessionID: body.SessionID, 
-		Role:      "user", 
+		UserID:    body.UserID,
+		SessionID: body.SessionID,
+		Role:      "user",
 		Text:      body.Query,
 		FilePath:  body.WebURL,
 	})
 
 	if brainRes.Action != "" {
-		services.EmitEvent("EXECUTOR", "Initializing tool: "+brainRes.Action, "INFO")
-		
-		msg, action := services.ExecuteToolCall(brainRes.Action, brainRes.Data)
+		log.Printf("[EXECUTOR] Action=%s", brainRes.Action)
+		services.EmitEvent("EXECUTOR", "Tool: "+brainRes.Action, "INFO")
+		msg, nav := services.ExecuteToolCall(brainRes.Action, brainRes.Data)
+
 		if msg != "" {
 			brainRes.Message = msg
-			brainRes.Action = action
-			services.EmitEvent("EXECUTOR", "Tool execution successful: "+action, "SUCCESS")
+			brainRes.Action = nav
+			services.EmitEvent("EXECUTOR", "Success: "+nav, "SUCCESS")
+		} else {
+			log.Printf("[EXECUTOR] Empty result for action: %s", brainRes.Action)
 		}
 	}
 
+	// Persist agent response
 	db.Instance.Create(&models.ChatHistory{
-		UserID:    body.UserID, 
-		SessionID: body.SessionID, 
-		Role:      "serqet", 
+		UserID:    body.UserID,
+		SessionID: body.SessionID,
+		Role:      "serqet",
 		Text:      brainRes.Message,
 		FilePath:  body.WebURL,
 		AudioURL:  brainRes.AudioURL,

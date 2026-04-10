@@ -3,9 +3,12 @@ package services
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"gateway/models"
 	"log"
 	"net/http"
+	"os"
+	"time"
 )
 
 type BrainResponse struct {
@@ -15,42 +18,55 @@ type BrainResponse struct {
 	AudioURL string                 `json:"audio_url"`
 }
 
+var brainHTTPClient = &http.Client{Timeout: 60 * time.Second}
+
+func brainURL() string {
+	if u := os.Getenv("BRAIN_URL"); u != "" {
+		return u
+	}
+	return "http://localhost:8000"
+}
+
 func RequestIntent(
-	userID string,
-	sessionID string,
-	query string,
-	filePath string,
+	userID, sessionID, query, filePath string,
 	history []models.ChatHistory,
 ) (*BrainResponse, error) {
-	var brainHistory []map[string]string
-	for _, h := range history {
-		brainHistory = append(brainHistory, map[string]string{
-			"role": h.Role, 
-			"text": h.Text,
-		})
+	msgs := make([]map[string]string, len(history))
+
+	for i, h := range history {
+		msgs[i] = map[string]string{"role": h.Role, "text": h.Text}
 	}
 
-	payload, _ := json.Marshal(map[string]interface{}{
+	payload, err := json.Marshal(map[string]interface{}{
 		"user_id":    userID,
-		"session_id": sessionID, 
+		"session_id": sessionID,
 		"query":      query,
 		"file_path":  filePath,
-		"history":    brainHistory,
+		"history":    msgs,
 	})
-	
-	log.Printf("[BRAIN LINK] Sending Intent: Session=%s | File=%s\n", sessionID, filePath)
 
-	resp, err := http.Post("http://localhost:8000/brain/v1/process_intent", "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		log.Printf("[BRAIN ERROR] Connection failed: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("marshal payload: %w", err)
 	}
+
+	log.Printf("[BRAIN] Intent session=%s file=%s", sessionID, filePath)
+
+	resp, err := brainHTTPClient.Post(
+		brainURL()+"/brain/v1/process_intent",
+		"application/json",
+		bytes.NewBuffer(payload),
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("brain request: %w", err)
+	}
+
 	defer resp.Body.Close()
 
 	var result BrainResponse
+
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		log.Printf("[BRAIN ERROR] Decode failed: %v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("decode brain response: %w", err)
 	}
 
 	return &result, nil

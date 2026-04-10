@@ -45,6 +45,9 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 				Status:   "draft",
 			}
 			db.Instance.Create(&post)
+			
+			mirrorToActionCenter("Social_Post", "Post Draft: "+post.Platform, post.Content)
+
 			return "Draft saved to Social Hub.", "view_social"
 
 		case "execute_create_task":
@@ -62,6 +65,8 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 				Status:  "Applied",
 			}
 			db.Instance.Create(&job)
+			mirrorToActionCenter("Job_App", "Track App: "+job.Company, job.Role)
+
 			return "Job application tracked.", "view_jobs"
 
 		case "execute_record_meal":
@@ -101,7 +106,6 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 					continue
 				}
 				if amount > 0 {
-					// Update local DB
 					db.Instance.Where(models.CryptoHoldings{Asset: asset}).
 						Assign(models.CryptoHoldings{Balance: amount}).
 						FirstOrCreate(&models.CryptoHoldings{})
@@ -199,16 +203,14 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 				return "Internal DB Error", ""
 			}
 
-			// mirrorToActionCenter("Venture_Plan", "Review Strategy: "+venture.Name, venture.StrategySummary)
+			mirrorToActionCenter("Venture_Plan", "Review Strategy: "+venture.Name, venture.StrategySummary)
 			log.Printf("SUCCESS: Venture saved with ID: %d", venture.ID)
 			return fmt.Sprintf("Venture '%s' initialized.", venture.Name), "view_finance"
 
 		case "execute_record_savings":
-			// This is used for recording profit from a venture
 			amount := utils.ParseNumeric(data["amount"])
 			description := utils.SafeString(data, "description")
 			
-			// 1. Log to generic finance ledger
 			income := models.FinanceRecord{
 				Amount:      amount,
 				Category:    "Venture Profit",
@@ -217,8 +219,6 @@ func ExecuteToolCall(action string, data map[string]interface{}) (string, string
 			}
 			db.Instance.Create(&income)
 
-			// 2. Logic to attribute to a specific venture (if found in description)
-			// In a lifetime OS, we search for the venture name in the description
 			var v models.VentureCampaign
 			db.Instance.Where("name ILIKE ?", "%"+description+"%").First(&v)
 			if v.ID != 0 {
