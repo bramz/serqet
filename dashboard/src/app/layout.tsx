@@ -1,8 +1,7 @@
-"use client";
-
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { useEffect } from "react";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,18 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const metadata: Metadata = {
+  title: "Serqet",
+  description: "AI-driven system to centralize and manage personal tasks.",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
-  useEffect(() => {
-    // Client-side hydration sync
-    const savedTheme = localStorage.getItem('serqet_theme') || 'dark';
-    document.documentElement.classList.add(savedTheme);
-  }, []);
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -43,7 +40,9 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
